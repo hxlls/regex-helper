@@ -14,6 +14,26 @@ class RegexTemplate {
     required this.example,
     required this.explanation,
   });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'description': description,
+        'pattern': pattern,
+        'category': category,
+        'example': example,
+        'explanation': explanation,
+      };
+
+  factory RegexTemplate.fromJson(Map<String, dynamic> json) => RegexTemplate(
+        name: json['name'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        pattern: json['pattern'] as String? ?? '',
+        category: json['category'] as String? ?? '自定义模板',
+        example: json['example'] as String? ?? '',
+        explanation: json['explanation'] as String? ?? '',
+      );
+
+  bool get isCustom => category == '自定义模板' || category == '自定义模板（AI）';
 }
 
 class GenerationResult {

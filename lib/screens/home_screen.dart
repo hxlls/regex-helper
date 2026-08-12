@@ -5,6 +5,7 @@ import '../engine/regex_engine.dart';
 import '../models/regex_template.dart';
 import '../services/ai_service.dart';
 import '../services/settings_service.dart';
+import '../services/template_store.dart';
 import 'settings_screen.dart';
 import 'templates_screen.dart';
 
@@ -135,6 +136,103 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _saveToLibrary() async {
+    final result = _result;
+    if (result == null) return;
+
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
+    final explanationController = TextEditingController(text: result.explanation);
+
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('保存到模板库'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: '模板名称',
+                  hintText: '例如：AI 生成的自定义模板',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descController,
+                decoration: const InputDecoration(
+                  labelText: '描述（可选）',
+                  hintText: '这个正则的用途',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  result.pattern,
+                  style: const TextStyle(
+                      fontFamily: 'monospace', fontSize: 14),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: explanationController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: '说明（可选）',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, nameController.text.trim()),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+
+    if (name == null || name.isEmpty) return;
+
+    final store = TemplateStore();
+    await store.add(RegexTemplate(
+      name: name,
+      description: descController.text.trim(),
+      pattern: result.pattern,
+      category: '自定义模板',
+      example: '',
+      explanation: explanationController.text.trim(),
+    ));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('已保存「$name」到模板库'),
+        action: SnackBarAction(
+          label: '查看',
+          onPressed: _openTemplates,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -223,6 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
               result: _result!,
               onCopy: _copyResult,
               onTest: () => _openTester(_result!.pattern),
+              onSave: _saveToLibrary,
             ),
           const SizedBox(height: 32),
           if (_result == null)
@@ -257,11 +356,13 @@ class _ResultCard extends StatelessWidget {
   final GenerationResult result;
   final VoidCallback onCopy;
   final VoidCallback onTest;
+  final VoidCallback onSave;
 
   const _ResultCard({
     required this.result,
     required this.onCopy,
     required this.onTest,
+    required this.onSave,
   });
 
   @override
@@ -296,18 +397,24 @@ class _ResultCard extends StatelessWidget {
             Text(result.explanation,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 FilledButton.icon(
                   icon: const Icon(Icons.copy, size: 18),
                   label: const Text('复制'),
                   onPressed: onCopy,
                 ),
-                const SizedBox(width: 8),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.science, size: 18),
                   label: const Text('测试'),
                   onPressed: onTest,
+                ),
+                FilledButton.tonalIcon(
+                  icon: const Icon(Icons.bookmark_add_outlined, size: 18),
+                  label: const Text('存模板'),
+                  onPressed: onSave,
                 ),
               ],
             ),
