@@ -54,6 +54,23 @@ jobs:
         run: flutter pub get
       - name: Test
         run: flutter test
+      - name: Pre-download Gradle (avoid intermittent GitHub 503)
+        run: |
+          cd android
+          GRADLE_URL="https://services.gradle.org/distributions/gradle-8.14.2-all.zip"
+          for i in 1 2 3 4 5; do
+            if curl -fL --retry 4 --retry-all-errors --retry-delay 2 \
+                -o "$HOME/gradle-8.14.2-all.zip" "$GRADLE_URL"; then
+              echo "Gradle downloaded on attempt $i"
+              break
+            fi
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
+          test -f "$HOME/gradle-8.14.2-all.zip"
+          sed -i "s|^distributionUrl=.*|distributionUrl=file://$HOME/gradle-8.14.2-all.zip|" \
+            gradle/wrapper/gradle-wrapper.properties
+          grep '^distributionUrl=' gradle/wrapper/gradle-wrapper.properties
       - name: Build APK
         run: flutter build apk --release
       - name: Rename APK
