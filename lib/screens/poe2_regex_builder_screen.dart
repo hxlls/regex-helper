@@ -133,12 +133,25 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   static String _applyValue(String pattern, String value) {
     final v = value.trim();
     if (v.isEmpty) return pattern;
-    // 解析比较运算符 + 数值：>50、>=50、<50、<=50、=50、50
-    final m = RegExp(r'^(>=|<=|>|<|=)?\s*(\d+(?:\.\d+)?)').firstMatch(v);
-    if (m == null) return pattern;
-    final op = m.group(1) ?? '=';
-    final numValue = double.parse(m.group(2)!).round();
-    final numPattern = NumberRangeRegex.byOperator(op, numValue);
+    String numPattern;
+    // 范围：15-20 / 15到20 / 15至20 / 15~20
+    final rangeM =
+        RegExp(r'^(\d+(?:\.\d+)?)\s*(?:-|到|至|~)\s*(\d+(?:\.\d+)?)')
+            .firstMatch(v);
+    if (rangeM != null) {
+      final a = double.parse(rangeM.group(1)!).round();
+      final b = double.parse(rangeM.group(2)!).round();
+      final lo = a < b ? a : b;
+      final hi = a < b ? b : a;
+      numPattern = NumberRangeRegex.between(lo, hi);
+    } else {
+      // 比较运算符 + 数值：>50、>=50、<50、<=50、=50、50
+      final m = RegExp(r'^(>=|<=|>|<|=)?\s*(\d+(?:\.\d+)?)').firstMatch(v);
+      if (m == null) return pattern;
+      final op = m.group(1) ?? '=';
+      final num = double.parse(m.group(2)!).round();
+      numPattern = NumberRangeRegex.byOperator(op, num);
+    }
     // 用生成的数值正则替换模式中的数字占位符 [0-9.]+ 或 [0-9]+
     final replaced =
         pattern.replaceAll(RegExp(r'\[0-9\.\]\+|\[0-9\]\+'), numPattern);
@@ -161,7 +174,8 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
         .toList();
     if (patterns.isEmpty) return '';
     if (_andMode) {
-      return patterns.map((p) => '(?=.*$p)').join('');
+      // 跨行安全：[\s\S]* 可跨越换行，多个词条须同时存在
+      return patterns.map((p) => '(?=[\\s\\S]*$p)').join('');
     }
     if (patterns.length == 1) return patterns.first;
     return '(${patterns.join('|')})';
@@ -503,6 +517,17 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                       fontFamily: 'monospace', fontSize: 13),
                 ),
               ),
+              if (output.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _andMode
+                        ? '全部(且)：一件物品需同时存在这些词条（可跨行）'
+                        : '任一(或)：匹配任意一个词条即可',
+                    style: TextStyle(
+                        fontSize: 11, color: Colors.blueGrey.shade600),
+                  ),
+                ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -590,7 +615,7 @@ class _ItemTile extends StatelessWidget {
                   const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: '输入数值，支持 >50、<50、>=50、<=50、50',
+                hintText: '输入数值：50、>50、<50、15-20（范围）',
                 hintStyle: TextStyle(
                     fontSize: 12, color: Colors.grey.shade500),
                 prefixIcon: const Icon(Icons.pin, size: 18),
