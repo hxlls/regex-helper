@@ -5,6 +5,7 @@ import '../data/poe2_regex_data.dart';
 import '../models/regex_template.dart';
 import '../services/poe2_regex_store.dart';
 import '../services/template_store.dart';
+import '../utils/number_range.dart';
 import 'poe2_regex_manage_screen.dart';
 
 class Poe2RegexBuilderScreen extends StatefulWidget {
@@ -132,12 +133,18 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   static String _applyValue(String pattern, String value) {
     final v = value.trim();
     if (v.isEmpty) return pattern;
-    // 用具体数值替换模式中的数字占位符 [0-9.]+ 或 [0-9]+
+    // 解析比较运算符 + 数值：>50、>=50、<50、<=50、=50、50
+    final m = RegExp(r'^(>=|<=|>|<|=)?\s*(\d+(?:\.\d+)?)').firstMatch(v);
+    if (m == null) return pattern;
+    final op = m.group(1) ?? '=';
+    final numValue = double.parse(m.group(2)!).round();
+    final numPattern = NumberRangeRegex.byOperator(op, numValue);
+    // 用生成的数值正则替换模式中的数字占位符 [0-9.]+ 或 [0-9]+
     final replaced =
-        pattern.replaceAll(RegExp(r'\[0-9\.\]\+|\[0-9\]\+'), v);
+        pattern.replaceAll(RegExp(r'\[0-9\.\]\+|\[0-9\]\+'), numPattern);
     if (replaced != pattern) return replaced;
-    // 模式中没有数字占位符时，把数值追加在末尾（带上 %）
-    return '$pattern.*$v%';
+    // 模式中没有数字占位符时，把数值正则追加在末尾（带上 %）
+    return '$pattern.*$numPattern%';
   }
 
   String get _output {
@@ -583,7 +590,7 @@ class _ItemTile extends StatelessWidget {
                   const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: '输入数值（如 50），替换模式中的数字',
+                hintText: '输入数值，支持 >50、<50、>=50、<=50、50',
                 hintStyle: TextStyle(
                     fontSize: 12, color: Colors.grey.shade500),
                 prefixIcon: const Icon(Icons.pin, size: 18),
