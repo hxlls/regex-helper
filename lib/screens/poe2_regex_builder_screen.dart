@@ -52,6 +52,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   final Map<String, TextEditingController> _maxControllers = {};
   final Map<String, TextEditingController> _wsControllers = {};
   final Set<String> _tabletRarities = {};
+  final Set<String> _mapRarities = {};
   final TextEditingController _tierMin = TextEditingController();
   final TextEditingController _tierMax = TextEditingController();
   final TextEditingController _tabletUseMin = TextEditingController();
@@ -281,6 +282,18 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                 ? '$label:.*\\\\+$range%'
                 : '$label:.*\\\\+$range');
           }
+        }
+      }
+      // 地图稀有度（普通/魔法/稀有 三选一）
+      if (_mapRarities.isNotEmpty && _mapRarities.length < 3) {
+        final map = {
+          'rare': '稀有',
+          'magic': '魔法',
+          'normal': '普通',
+        };
+        final s = _mapRarities.map((e) => map[e] ?? '').where((e) => e.isNotEmpty).toList();
+        if (s.isNotEmpty) {
+          result.add('稀有度: (${s.join('|')})');
         }
       }
     } else if (tab == 2) {
@@ -605,6 +618,31 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   label: Text(c.$1),
                   selected: _corrupted == c.$2,
                   onSelected: (_) => setState(() => _corrupted = c.$2),
+                ),
+            ],
+          ),
+        ),
+        _paramHeader('地图稀有度（三选一）'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 8,
+            children: [
+              for (final r in ['rare', 'magic', 'normal'])
+                FilterChip(
+                  label: Text(r == 'rare'
+                      ? '稀有'
+                      : r == 'magic'
+                          ? '魔法'
+                          : '普通'),
+                  selected: _mapRarities.contains(r),
+                  onSelected: (sel) => setState(() {
+                    if (sel) {
+                      _mapRarities.add(r);
+                    } else {
+                      _mapRarities.remove(r);
+                    }
+                  }),
                 ),
             ],
           ),
