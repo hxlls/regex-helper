@@ -36,7 +36,6 @@ const List<String> kPoe2RegexCategories = [
   '石板',
   '装备词缀',
   '装备类别',
-  '特殊词缀',
 ];
 
 const Map<String, String> kPoe2RegexCategoryIds = {
@@ -45,7 +44,6 @@ const Map<String, String> kPoe2RegexCategoryIds = {
   '石板': 'tablet',
   '装备词缀': 'items',
   '装备类别': 'classes',
-  '特殊词缀': 'special',
 };
 
 const List<String> kPoe2MapAffixGroups = ['前缀', '后缀'];
