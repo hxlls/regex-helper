@@ -8,7 +8,8 @@ class MatchHighlight extends StatelessWidget {
   final bool global;
   final int maxMatches;
   final TextStyle baseStyle;
-  final TextStyle matchStyle;
+  final Color matchBackground;
+  final Color matchForeground;
 
   const MatchHighlight({
     super.key,
@@ -19,12 +20,8 @@ class MatchHighlight extends StatelessWidget {
     this.global = true,
     this.maxMatches = 2000,
     this.baseStyle = const TextStyle(fontSize: 14),
-    this.matchStyle = const TextStyle(
-      fontSize: 14,
-      color: Colors.black,
-      backgroundColor: Colors.yellow,
-      fontWeight: FontWeight.bold,
-    ),
+    this.matchBackground = const Color(0xFFFFC107),
+    this.matchForeground = const Color(0xFF000000),
   });
 
   @override
@@ -44,38 +41,74 @@ class MatchHighlight extends StatelessWidget {
       return Text(text, style: baseStyle);
     }
 
-    final spans = <TextSpan>[];
+    final matchStyle = baseStyle.copyWith(
+      color: matchForeground,
+      fontWeight: FontWeight.bold,
+    );
+
+    final spans = <InlineSpan>[];
     int cursor = 0;
     int count = 0;
 
-    if (!global) {
-      final match = regex.firstMatch(text);
-      if (match != null) {
-        if (match.start > 0) {
-          spans.add(TextSpan(text: text.substring(0, match.start)));
-        }
-        spans.add(TextSpan(text: match.group(0), style: matchStyle));
-        cursor = match.end;
-      }
+    void addMatchSpan(String matched) {
+      spans.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: matchBackground,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(matched, style: matchStyle),
+          ),
+        ),
+      );
+    }
+
+    Iterable<RegExpMatch> matches;
+    if (global) {
+      matches = regex.allMatches(text).take(maxMatches);
     } else {
-      for (final match in regex.allMatches(text)) {
-        if (count >= maxMatches) break;
-        if (match.start > cursor) {
-          spans.add(TextSpan(text: text.substring(cursor, match.start)));
-        }
-        spans.add(TextSpan(text: match.group(0), style: matchStyle));
-        cursor = match.end;
-        count++;
+      final first = regex.firstMatch(text);
+      matches = first == null ? const [] : [first];
+    }
+
+    for (final match in matches) {
+      if (match.start > cursor) {
+        spans.add(TextSpan(text: text.substring(cursor, match.start)));
       }
+      addMatchSpan(match.group(0) ?? '');
+      cursor = match.end;
+      count++;
     }
 
     if (cursor < text.length) {
       spans.add(TextSpan(text: text.substring(cursor)));
     }
 
-    return RichText(
-      text: TextSpan(children: spans, style: baseStyle),
-      textScaler: MediaQuery.textScalerOf(context),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RichText(
+          text: TextSpan(children: spans, style: baseStyle),
+          textScaler: MediaQuery.textScalerOf(context),
+        ),
+        if (count > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              '共匹配 $count 处',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.green.shade800,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

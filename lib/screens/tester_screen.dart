@@ -110,11 +110,22 @@ class _TesterScreenState extends State<TesterScreen> {
           ),
           const SizedBox(height: 16),
           if (check.valid) ...[
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                '匹配结果实时预览（黄色为匹配项）',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blueGrey,
+                ),
+              ),
+            ),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: MatchHighlight(
@@ -122,14 +133,6 @@ class _TesterScreenState extends State<TesterScreen> {
                 pattern: pattern,
                 caseInsensitive: _caseInsensitive,
                 anchored: _multiLine,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '匹配结果实时预览（黄色高亮）',
-              style: TextStyle(
-                color: Colors.green,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ],
