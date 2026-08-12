@@ -27,6 +27,22 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   bool _andMode = false;
   final _store = Poe2RegexStore();
   List<Poe2RegexItem> _customItems = [];
+  final Map<String, TextEditingController> _valueControllers = {};
+
+  @override
+  void dispose() {
+    _customController.dispose();
+    for (final c in _valueControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  TextEditingController _valueControllerOf(String id) {
+    return _valueControllers.putIfAbsent(id, TextEditingController.new);
+  }
+
+  String _valueOf(String id) => _valueControllers[id]?.text ?? '';
 
   @override
   void initState() {
@@ -37,12 +53,6 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   Future<void> _loadCustom() async {
     final items = await _store.load();
     if (mounted) setState(() => _customItems = items);
-  }
-
-  @override
-  void dispose() {
-    _customController.dispose();
-    super.dispose();
   }
 
   Set<String> _setFor(int tabIndex) {
@@ -119,6 +129,17 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     return item.cn;
   }
 
+  static String _applyValue(String pattern, String value) {
+    final v = value.trim();
+    if (v.isEmpty) return pattern;
+    // 用具体数值替换模式中的数字占位符 [0-9.]+ 或 [0-9]+
+    final replaced =
+        pattern.replaceAll(RegExp(r'\[0-9\.\]\+|\[0-9\]\+'), v);
+    if (replaced != pattern) return replaced;
+    // 模式中没有数字占位符时，把数值追加在末尾（带上 %）
+    return '$pattern.*$v%';
+  }
+
   String get _output {
     if (tabIndexCustom) {
       return _customController.text.trim();
@@ -128,7 +149,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     final selectedSet = _setFor(tab);
     final patterns = items
         .where((e) => selectedSet.contains(e.id))
-        .map((e) => _patternOf(e, tab))
+        .map((e) => _applyValue(_patternOf(e, tab), _valueOf(e.id)))
         .where((p) => p.isNotEmpty)
         .toList();
     if (patterns.isEmpty) return '';
@@ -326,19 +347,13 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
           child: ListView(
             children: [
               for (final item in items)
-                CheckboxListTile(
-                  dense: true,
-                  title: Text(item.label,
-                      style: const TextStyle(fontSize: 14)),
-                  subtitle: item.cn.isNotEmpty
-                      ? Text(item.cn,
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontFamily: 'monospace',
-                              color: Colors.grey.shade600))
-                      : null,
-                  value: set.contains(item.id),
-                  onChanged: (_) => _toggle(controller, item),
+                _ItemTile(
+                  item: item,
+                  selected: set.contains(item.id),
+                  controller: _valueControllerOf(item.id),
+                  showValueInput: tabIndex == 0 || tabIndex == 1 || tabIndex == 4,
+                  onToggle: (_) => _toggle(controller, item),
+                  onChanged: (_) => setState(() {}),
                 ),
               const SizedBox(height: 80),
             ],
@@ -374,19 +389,13 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   ),
                 ),
                 for (final item in items.where((e) => e.group == g))
-                  CheckboxListTile(
-                    dense: true,
-                    title: Text(item.label,
-                        style: const TextStyle(fontSize: 14)),
-                    subtitle: item.cn.isNotEmpty
-                        ? Text(item.cn,
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontFamily: 'monospace',
-                                color: Colors.grey.shade600))
-                        : null,
-                    value: set.contains(item.id),
-                    onChanged: (_) => _toggle(controller, item),
+                  _ItemTile(
+                    item: item,
+                    selected: set.contains(item.id),
+                    controller: _valueControllerOf(item.id),
+                    showValueInput: true,
+                    onToggle: (_) => _toggle(controller, item),
+                    onChanged: (_) => setState(() {}),
                   ),
               ],
               const SizedBox(height: 80),
@@ -524,6 +533,71 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ItemTile extends StatelessWidget {
+  final Poe2RegexItem item;
+  final bool selected;
+  final TextEditingController controller;
+  final bool showValueInput;
+  final ValueChanged<bool> onToggle;
+  final ValueChanged<String> onChanged;
+
+  const _ItemTile({
+    required this.item,
+    required this.selected,
+    required this.controller,
+    required this.showValueInput,
+    required this.onToggle,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CheckboxListTile(
+          dense: true,
+          title: Text(item.label, style: const TextStyle(fontSize: 14)),
+          subtitle: item.cn.isNotEmpty
+              ? Text(
+                  item.cn,
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                      color: Colors.grey.shade600),
+                )
+              : null,
+          value: selected,
+          onChanged: (v) => onToggle(v ?? false),
+        ),
+        if (selected && showValueInput)
+          Padding(
+            padding: const EdgeInsets.only(left: 52, right: 16, bottom: 8),
+            child: TextField(
+              controller: controller,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: '输入数值（如 50），替换模式中的数字',
+                hintStyle: TextStyle(
+                    fontSize: 12, color: Colors.grey.shade500),
+                prefixIcon: const Icon(Icons.pin, size: 18),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 8),
+              ),
+              style: const TextStyle(fontSize: 13),
+              onChanged: onChanged,
+            ),
+          ),
+      ],
     );
   }
 }
