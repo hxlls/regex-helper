@@ -1,9 +1,11 @@
 import '../models/regex_template.dart';
+import 'poe2_affix_templates.dart';
 import 'poe2_templates.dart';
 
 final List<RegexTemplate> kTemplates = [
   ..._baseTemplates,
   ...kPoe2Templates,
+  ...kPoe2AffixTemplates,
 ];
 
 const List<RegexTemplate> _baseTemplates = [

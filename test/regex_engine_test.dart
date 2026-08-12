@@ -128,5 +128,42 @@ void main() {
       expect(regex.hasMatch('95'), isFalse);
       expect(regex.hasMatch('105'), isFalse);
     });
+
+    test('POE2 附加火焰伤害', () {
+      final r = RegexEngine.generate('匹配附加火焰伤害')!;
+      expect(r.pattern, contains('附加'));
+      expect(r.pattern, contains('火焰伤害'));
+      final regex = RegExp(r.pattern);
+      expect(regex.hasMatch('附加 3 至 6 的火焰伤害'), isTrue);
+      expect(regex.hasMatch('附加 10 至 15 的火焰伤害'), isTrue);
+    });
+
+    test('POE2 火焰抗性', () {
+      final r = RegexEngine.generate('匹配火焰抗性')!;
+      expect(r.pattern, contains('火焰抗性'));
+      final regex = RegExp(r.pattern);
+      expect(regex.hasMatch('+15% 火焰抗性'), isTrue);
+    });
+
+    test('POE2 最大生命', () {
+      final r = RegexEngine.generate('匹配最大生命')!;
+      expect(r.pattern, contains('最大生命'));
+      final regex = RegExp(r.pattern);
+      expect(regex.hasMatch('+40 最大生命'), isTrue);
+    });
+
+    test('POE2 攻击速度', () {
+      final r = RegexEngine.generate('匹配攻击速度')!;
+      expect(r.pattern, contains('攻击速度'));
+      final regex = RegExp(r.pattern);
+      expect(regex.hasMatch('增加 8% 攻击速度'), isTrue);
+    });
+
+    test('POE2 力量属性', () {
+      final r = RegexEngine.generate('匹配力量')!;
+      expect(r.pattern, contains('力量'));
+      final regex = RegExp(r.pattern);
+      expect(regex.hasMatch('+25 力量'), isTrue);
+    });
   });
 }

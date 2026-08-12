@@ -8,6 +8,7 @@ import '../services/settings_service.dart';
 import '../services/template_store.dart';
 import 'settings_screen.dart';
 import 'templates_screen.dart';
+import 'poe2_affix_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -128,6 +129,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openPoe2Affixes() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const Poe2AffixScreen()),
+    );
+  }
+
   void _copyResult() {
     if (_result == null) return;
     Clipboard.setData(ClipboardData(text: _result!.pattern));
@@ -240,6 +248,11 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('正则助手'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.style),
+            tooltip: 'POE2 词条库',
+            onPressed: _openPoe2Affixes,
+          ),
+          IconButton(
             icon: const Icon(Icons.library_books),
             tooltip: '模板库',
             onPressed: _openTemplates,
@@ -314,6 +327,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
             ],
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.deepOrange.shade700,
+              side: BorderSide(color: Colors.deepOrange.shade200),
+            ),
+            icon: const Icon(Icons.style, size: 18),
+            label: const Text('POE2 词条库（附加伤害/抗性/属性等）'),
+            onPressed: _openPoe2Affixes,
           ),
           const SizedBox(height: 16),
           if (_result != null)

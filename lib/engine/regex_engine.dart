@@ -221,6 +221,13 @@ class RegexEngine {
       basePattern: () => r'技能(?:宝石|寶石)',
     ),
     _Rule(
+      id: 'poe_skill_level',
+      name: '技能宝石等级',
+      keywords: ['技能宝石等级', '技能等級', '技能等级'],
+      basePattern: () =>
+          r'[+\-]?\s*\d+\s*至(?:所有)?技能(?:宝石|寶石)等级|\+\s*\d+\s*技能(?:宝石|寶石)?等级',
+    ),
+    _Rule(
       id: 'poe_rune',
       name: '符文',
       keywords: ['符文', '灵魂核心', '靈魂核心'],
@@ -334,6 +341,10 @@ class RegexEngine {
         caseInsensitive: false,
       );
     }
+
+    // B3) 流放之路2 词条识别（附加伤害/抗性/属性/生命/速度等）
+    final affix = _tryAffix(lower, action, anchoredHint);
+    if (affix != null) return affix;
 
     // C) 兜底：字面量转义
     final pattern = _escapeLiteral(text);
@@ -485,6 +496,141 @@ class RegexEngine {
       }
     }
     return buffer.toString();
+  }
+
+  /// 流放之路2 词条识别：根据描述生成匹配词条行的正则。
+  static GenerationResult? _tryAffix(
+      String lower, String action, bool anchoredHint) {
+    // 1) 附加 X 至 Y 的{元素}伤害
+    const elements = <String, String>{
+      '火焰伤害': '火焰',
+      '火伤': '火焰',
+      '冰冷伤害': '冰冷',
+      '冰霜伤害': '冰冷',
+      '冰伤': '冰冷',
+      '闪电伤害': '闪电',
+      '电伤': '闪电',
+      '混沌伤害': '混沌',
+      '混沌伤': '混沌',
+      '物理伤害': '物理',
+      '物伤': '物理',
+    };
+    if (lower.contains('附加')) {
+      String? element;
+      for (final e in elements.entries) {
+        if (lower.contains(e.key)) {
+          element = e.value;
+          break;
+        }
+      }
+      if (element != null) {
+        return GenerationResult(
+          pattern: '附加\\s*\\d+\\s*至\\s*\\d+\\s*的$element伤害',
+          explanation: '匹配「附加$element伤害」词条（数值区间可变）',
+          anchored: action == 'match' || anchoredHint,
+        );
+      }
+    }
+
+    // 2) 元素抗性
+    const resists = <String, String>{
+      '火焰抗性': '火焰',
+      '火抗': '火焰',
+      '冰冷抗性': '冰冷',
+      '冰抗': '冰冷',
+      '闪电抗性': '闪电',
+      '电抗': '闪电',
+      '混沌抗性': '混沌',
+    };
+    String? resist;
+    for (final e in resists.entries) {
+      if (lower.contains(e.key)) {
+        resist = e.value;
+        break;
+      }
+    }
+    if (resist != null) {
+      final pattern = '$resist抗性';
+      return GenerationResult(
+        pattern: '[+\\-]?\\s*\\d+%\\s*$pattern',
+        explanation: '匹配「$pattern」词条',
+        anchored: action == 'match' || anchoredHint,
+      );
+    }
+
+    // 3) 属性（力量/敏捷/智慧）
+    if (lower.contains('力量') ||
+        lower.contains('敏捷') ||
+        lower.contains('智慧')) {
+      final attr = lower.contains('智慧')
+          ? '智慧'
+          : lower.contains('敏捷')
+              ? '敏捷'
+              : '力量';
+      return GenerationResult(
+        pattern: '[+\\-]?\\s*\\d+\\s*$attr',
+        explanation: '匹配「$attr」属性词条',
+        anchored: action == 'match' || anchoredHint,
+      );
+    }
+
+    // 4) 最大生命 / 最大魔力
+    if (lower.contains('最大生命') ||
+        lower.contains('最大魔力') ||
+        lower.contains('生命上限') ||
+        lower.contains('魔力上限')) {
+      final t = lower.contains('魔力') ? '最大魔力' : '最大生命';
+      return GenerationResult(
+        pattern: '[+\\-]?\\s*\\d+\\s*$t',
+        explanation: '匹配「$t」词条',
+        anchored: action == 'match' || anchoredHint,
+      );
+    }
+
+    // 5) 攻击/施放/移动速度
+    if (lower.contains('攻击速度') ||
+        lower.contains('施放速度') ||
+        lower.contains('移动速度') ||
+        lower.contains('攻速') ||
+        lower.contains('施速')) {
+      final t = lower.contains('施放速度') || lower.contains('施速')
+          ? '施放速度'
+          : lower.contains('移动速度')
+              ? '移动速度'
+              : '攻击速度';
+      return GenerationResult(
+        pattern: '(?:增加|提高|降低|减少)?\\s*\\d+%\\s*$t',
+        explanation: '匹配「$t」词条',
+        anchored: action == 'match' || anchoredHint,
+      );
+    }
+
+    // 6) 技能宝石等级
+    if (lower.contains('技能宝石等级') || lower.contains('技能等级')) {
+      return GenerationResult(
+        pattern: '[+\\-]?\\s*\\d+\\s*至(?:所有)?技能宝石等级|\\+\\s*\\d+\\s*技能(?:宝石)?等级',
+        explanation: '匹配技能宝石等级词条',
+        anchored: action == 'match' || anchoredHint,
+      );
+    }
+
+    // 7) 护甲/闪避/能量护盾
+    if (lower.contains('护甲') ||
+        lower.contains('闪避') ||
+        lower.contains('能量护盾')) {
+      final t = lower.contains('能量护盾')
+          ? '能量护盾'
+          : lower.contains('闪避')
+              ? '闪避值'
+              : '护甲';
+      return GenerationResult(
+        pattern: '(?:$t\\s*\\+\\s*\\d+|\\+\\s*\\d+\\s*$t)',
+        explanation: '匹配「$t」词条',
+        anchored: action == 'match' || anchoredHint,
+      );
+    }
+
+    return null;
   }
 
   /// 解析「大于/小于」「在X到Y之间」等数值范围描述。
