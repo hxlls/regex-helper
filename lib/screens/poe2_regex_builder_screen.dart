@@ -8,6 +8,24 @@ import '../services/template_store.dart';
 import '../utils/number_range.dart';
 import 'poe2_regex_manage_screen.dart';
 
+class _WaystoneStat {
+  final String id;
+  final String cn;
+  final String tc;
+  final bool isPercent;
+  const _WaystoneStat(this.id, this.cn, this.tc, this.isPercent);
+}
+
+const List<_WaystoneStat> _kWaystoneStats = [
+  _WaystoneStat('pack', '怪物群规模', '怪群大小', true),
+  _WaystoneStat('rarity', '物品稀有度', '物品稀有度', true),
+  _WaystoneStat('drop', '引路石掉落几率', '換界石掉落機率', true),
+  _WaystoneStat('monRarity', '怪物稀有度', '怪物稀有度', true),
+  _WaystoneStat('eff', '怪物效能', '怪物效.{0,2}', true),
+  _WaystoneStat('magic', '更多地图', '更多地圖', true),
+  _WaystoneStat('rare', '更多圣甲虫', '更多聖甲蟲', true),
+];
+
 class Poe2RegexBuilderScreen extends StatefulWidget {
   const Poe2RegexBuilderScreen({super.key});
 
@@ -30,6 +48,13 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   List<Poe2RegexItem> _customItems = [];
   final Map<String, TextEditingController> _minControllers = {};
   final Map<String, TextEditingController> _maxControllers = {};
+  final Map<String, TextEditingController> _wsControllers = {};
+  final Set<String> _tabletRarities = {};
+  final TextEditingController _tierMin = TextEditingController();
+  final TextEditingController _tierMax = TextEditingController();
+  final TextEditingController _tabletUseMin = TextEditingController();
+  final TextEditingController _tabletUseMax = TextEditingController();
+  String? _corrupted; // null=不限 corrupted=已腐化 clean=非腐化
 
   @override
   void dispose() {
@@ -40,6 +65,13 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     for (final c in _maxControllers.values) {
       c.dispose();
     }
+    for (final c in _wsControllers.values) {
+      c.dispose();
+    }
+    _tierMin.dispose();
+    _tierMax.dispose();
+    _tabletUseMin.dispose();
+    _tabletUseMax.dispose();
     super.dispose();
   }
 
@@ -51,8 +83,13 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     return _maxControllers.putIfAbsent(id, TextEditingController.new);
   }
 
+  TextEditingController _wsControllerOf(String id) {
+    return _wsControllers.putIfAbsent(id, TextEditingController.new);
+  }
+
   String _minOf(String id) => _minControllers[id]?.text ?? '';
   String _maxOf(String id) => _maxControllers[id]?.text ?? '';
+  String _wsOf(String id) => _wsControllers[id]?.text ?? '';
 
   @override
   void initState() {
@@ -173,12 +210,14 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     final tab = _currentTab;
     final items = _itemsFor(tab);
     final selectedSet = _setFor(tab);
-    final patterns = items
-        .where((e) => selectedSet.contains(e.id))
-        .map((e) =>
-            _applyRange(_patternOf(e, tab), _minOf(e.id), _maxOf(e.id)))
-        .where((p) => p.isNotEmpty)
-        .toList();
+    final patterns = <String>[
+      ..._extraPatterns(tab),
+      ...items
+          .where((e) => selectedSet.contains(e.id))
+          .map((e) =>
+              _applyRange(_patternOf(e, tab), _minOf(e.id), _maxOf(e.id)))
+          .where((p) => p.isNotEmpty),
+    ];
     if (patterns.isEmpty) return '';
     if (_mode == 2) {
       // 隐藏：匹配不包含任何所选词条的文本
@@ -191,6 +230,70 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     }
     if (patterns.length == 1) return patterns.first;
     return '(${patterns.join('|')})';
+  }
+
+  /// 地图/石板标签页的附加参数（地图阶级、腐化、引路石属性、使用次数、稀有度）。
+  List<String> _extraPatterns(int tab) {
+    final result = <String>[];
+    if (tab == 0) {
+      // 地图阶级
+      final tMin = _tierMin.text.trim();
+      final tMax = _tierMax.text.trim();
+      if (tMin.isNotEmpty || tMax.isNotEmpty) {
+        final lo = int.tryParse(tMin) ?? 1;
+        final hi = int.tryParse(tMax) ?? 16;
+        final range = NumberRangeRegex.between(lo, hi);
+        result.add(_isTc ? '（ *階級 *$range' : '（ *$range *阶');
+      }
+      // 腐化
+      if (_corrupted == 'corrupted') {
+        result.add(_isTc ? '已汙' : '已腐');
+      }
+      // 引路石基础属性
+      for (final ws in _kWaystoneStats) {
+        final v = _wsOf(ws.id);
+        if (v.trim().isNotEmpty) {
+          final num = int.tryParse(v.trim());
+          if (num != null) {
+            final range = NumberRangeRegex.gte(num);
+            final label = _isTc ? ws.tc : ws.cn;
+            result.add(ws.isPercent
+                ? '$label:.*\\\\+$range%'
+                : '$label:.*\\\\+$range');
+          }
+        }
+      }
+    } else if (tab == 2) {
+      // 石板使用次数
+      final uMin = _tabletUseMin.text.trim();
+      final uMax = _tabletUseMax.text.trim();
+      if (uMin.isNotEmpty || uMax.isNotEmpty) {
+        final lo = int.tryParse(uMin);
+        final hi = int.tryParse(uMax);
+        String range;
+        if (lo != null && hi != null) {
+          range = NumberRangeRegex.between(lo, hi);
+        } else if (lo != null) {
+          range = NumberRangeRegex.gte(lo);
+        } else {
+          range = NumberRangeRegex.lte(hi!);
+        }
+        result.add(_isTc ? '剩餘 *$range *次' : '剩余次数： *$range');
+      }
+      // 石板稀有度
+      if (_tabletRarities.isNotEmpty && _tabletRarities.length < 3) {
+        final map = {
+          'rare': _isTc ? '稀有' : '稀有',
+          'magic': _isTc ? '魔法' : '魔法',
+          'normal': _isTc ? '中' : '普通',
+        };
+        final s = _tabletRarities.map((e) => map[e] ?? '').where((e) => e.isNotEmpty).toList();
+        if (s.isNotEmpty) {
+          result.add('稀有度: (${s.join('|')})');
+        }
+      }
+    }
+    return result;
   }
 
   bool get tabIndexCustom => _tabController?.index == 5;
@@ -379,6 +482,8 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
         Expanded(
           child: ListView(
             children: [
+              if (tabIndex == 0) _buildMapParams(),
+              if (tabIndex == 2) _buildTabletParams(),
               for (final item in items)
                 _ItemTile(
                   item: item,
@@ -390,6 +495,209 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   onChanged: (_) => setState(() {}),
                 ),
               const SizedBox(height: 80),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _paramHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapParams() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _paramHeader('地图阶级'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              const Text('最低', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 52,
+                child: TextField(
+                  controller: _tierMin,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: '1',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text('~', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 10),
+              const Text('最高', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 52,
+                child: TextField(
+                  controller: _tierMax,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: '16',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        _paramHeader('腐化'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 8,
+            children: [
+              for (final c in [
+                ('不限', null),
+                ('已腐化', 'corrupted'),
+                ('非腐化', 'clean'),
+              ])
+                ChoiceChip(
+                  label: Text(c.$1),
+                  selected: _corrupted == c.$2,
+                  onSelected: (_) => setState(() => _corrupted = c.$2),
+                ),
+            ],
+          ),
+        ),
+        _paramHeader('引路石基础属性（≥）'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              for (final ws in _kWaystoneStats)
+                SizedBox(
+                  width: 110,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(_isTc ? ws.tc : ws.cn,
+                            style: const TextStyle(fontSize: 11),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      const SizedBox(width: 4),
+                      SizedBox(
+                        width: 44,
+                        child: TextField(
+                          controller: _wsControllerOf(ws.id),
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 12),
+                          onChanged: (_) => setState(() {}),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            hintText: '0',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabletParams() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _paramHeader('使用次数（剩余）'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              const Text('最低', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 52,
+                child: TextField(
+                  controller: _tabletUseMin,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: '0',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text('~', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 10),
+              const Text('最高', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 52,
+                child: TextField(
+                  controller: _tabletUseMax,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: '999',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        _paramHeader('稀有度'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 8,
+            children: [
+              for (final r in ['rare', 'magic', 'normal'])
+                FilterChip(
+                  label: Text(r == 'rare'
+                      ? '稀有'
+                      : r == 'magic'
+                          ? '魔法'
+                          : '普通'),
+                  selected: _tabletRarities.contains(r),
+                  onSelected: (sel) => setState(() {
+                    if (sel) {
+                      _tabletRarities.add(r);
+                    } else {
+                      _tabletRarities.remove(r);
+                    }
+                  }),
+                ),
             ],
           ),
         ),
