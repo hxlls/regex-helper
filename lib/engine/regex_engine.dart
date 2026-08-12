@@ -5,13 +5,22 @@ class _Rule {
   final String name;
   final List<String> keywords;
   final String Function() basePattern;
+  final String? rangePrefix;
 
   const _Rule({
     required this.id,
     required this.name,
     required this.keywords,
     required this.basePattern,
+    this.rangePrefix,
   });
+}
+
+class _Range {
+  final int? min;
+  final int? max;
+
+  const _Range(this.min, this.max);
 }
 
 class _Length {
@@ -224,6 +233,27 @@ class RegexEngine {
       keywords: ['石碑', '地图', '地圖'],
       basePattern: () => r'石碑|地图|地圖',
     ),
+    _Rule(
+      id: 'rarity',
+      name: '稀有度',
+      keywords: ['稀有度', '稀有度数值', '稀有度属性'],
+      rangePrefix: '稀有度',
+      basePattern: () => r'稀有度\s*[：:]?\s*\d{1,3}%',
+    ),
+    _Rule(
+      id: 'itemlevel',
+      name: '物品等级',
+      keywords: ['物品等级', '物品等級', '物品等级数值'],
+      rangePrefix: '物品等级',
+      basePattern: () => r'物品等级\s*[：:]?\s*\d+',
+    ),
+    _Rule(
+      id: 'quality',
+      name: '品质',
+      keywords: ['品质', '品質', '品质数值'],
+      rangePrefix: '品质',
+      basePattern: () => r'品质\s*[：:]?\s*\d+%',
+    ),
   ];
 
   static const Map<String, String> _typeWords = {
@@ -259,6 +289,7 @@ class RegexEngine {
 
     final matchedRule = _matchRule(lower);
     final matchedTypes = _matchTypes(lower);
+    final range = _parseRange(text);
 
     // A) 存在明确的字符类型词（数字/字母/中文等）→ 通用组合构建
     if (matchedTypes.isNotEmpty) {
@@ -268,6 +299,19 @@ class RegexEngine {
 
     // B) 规则命中的明确实体（手机号/邮箱/身份证等）
     if (matchedRule != null) {
+      // B1) 数值范围（稀有度/物品等级/品质 等含 rangePrefix 的规则）
+      if (range != null && matchedRule.rangePrefix != null) {
+        final unit = lower.contains('%') ? '%' : '';
+        final prefix = matchedRule.rangePrefix!;
+        final rangePattern = _rangePatternString(range);
+        return GenerationResult(
+          pattern: '$prefix\\s*[：:]?\\s*$rangePattern$unit',
+          explanation: _rangeExplanation(prefix, range, unit),
+          anchored: action == 'match' || anchoredHint,
+          caseInsensitive: _hasEnglish(lower),
+        );
+      }
+
       final pattern = matchedRule.basePattern();
       final explanation =
           '匹配${matchedRule.name}${length != null ? '（长度 $length 位）' : ''}';
@@ -276,6 +320,18 @@ class RegexEngine {
         explanation: explanation,
         anchored: action == 'match' || anchoredHint,
         caseInsensitive: _hasEnglish(lower),
+      );
+    }
+
+    // B2) 无规则但带数值范围 → 直接匹配数值区间
+    if (range != null) {
+      final unit = lower.contains('%') ? '%' : '';
+      final rangePattern = _rangePatternString(range);
+      return GenerationResult(
+        pattern: '$rangePattern$unit',
+        explanation: _rangeExplanation(null, range, unit),
+        anchored: action == 'match' || anchoredHint,
+        caseInsensitive: false,
       );
     }
 
@@ -429,5 +485,156 @@ class RegexEngine {
       }
     }
     return buffer.toString();
+  }
+
+  /// 解析「大于/小于」「在X到Y之间」等数值范围描述。
+  static _Range? _parseRange(String text) {
+    int? min;
+    bool minInclusive = false;
+    int? max;
+    bool maxInclusive = false;
+
+    Match? m;
+    m = RegExp(r'大于等于\s*(\d+)').firstMatch(text);
+    if (m != null) {
+      min = int.parse(m.group(1)!);
+      minInclusive = true;
+    } else {
+      m = RegExp(r'不小于\s*(\d+)').firstMatch(text);
+      if (m != null) {
+        min = int.parse(m.group(1)!);
+        minInclusive = true;
+      } else {
+        m = RegExp(r'大于\s*(\d+)').firstMatch(text);
+        if (m != null) min = int.parse(m.group(1)!);
+      }
+    }
+
+    m = RegExp(r'小于等于\s*(\d+)').firstMatch(text);
+    if (m != null) {
+      max = int.parse(m.group(1)!);
+      maxInclusive = true;
+    } else {
+      m = RegExp(r'不大于\s*(\d+)').firstMatch(text);
+      if (m != null) {
+        max = int.parse(m.group(1)!);
+        maxInclusive = true;
+      } else {
+        m = RegExp(r'小于\s*(\d+)').firstMatch(text);
+        if (m != null) max = int.parse(m.group(1)!);
+      }
+    }
+
+    if (min == null || max == null) {
+      m = RegExp(r'在\s*(\d+)\s*[到至\-~]\s*(\d+)\s*之间').firstMatch(text) ??
+          RegExp(r'(\d+)\s*[到至]\s*(\d+)\s*之间').firstMatch(text);
+      if (m != null) {
+        min = int.parse(m.group(1)!);
+        max = int.parse(m.group(2)!);
+        minInclusive = true;
+        maxInclusive = true;
+      }
+    }
+
+    if (min != null && max != null && min > max) return null;
+
+    if (min != null && max != null) {
+      final lo = minInclusive ? min : min + 1;
+      final hi = maxInclusive ? max : max - 1;
+      if (lo > hi) return null;
+      return _Range(lo, hi);
+    }
+    if (min != null) {
+      return _Range(minInclusive ? min : min + 1, null);
+    }
+    if (max != null) {
+      return _Range(null, maxInclusive ? max : max - 1);
+    }
+    return null;
+  }
+
+  /// 生成匹配区间内所有整数的正则，带数字边界守卫（不匹配更大数字的子串）。
+  static String _rangePatternString(_Range range) {
+    String inner;
+    if (range.min != null && range.max != null) {
+      inner = _rangePattern(range.min!, range.max!);
+    } else if (range.min != null) {
+      final lo = range.min!;
+      final len = lo.toString().length;
+      final upTo9 = _pow10(len) - 1;
+      inner = '(?:${_subRangeStr('$lo', '$upTo9')}|\\d{${len + 1},})';
+    } else {
+      inner = _rangePattern(0, range.max!);
+    }
+    return '(?<!\\d)(?:$inner)(?!\\d)';
+  }
+
+  /// 生成范围的说明文字。
+  static String _rangeExplanation(String? prefix, _Range range, String unit) {
+    final label = prefix ?? '数值';
+    final lo = range.min;
+    final hi = range.max;
+    if (lo != null && hi != null) return '匹配$label在 $lo 到 $hi$unit 之间';
+    if (lo != null) return '匹配$label大于等于 $lo$unit';
+    return '匹配$label小于等于 $hi$unit';
+  }
+
+  /// 生成匹配 [min, max] 区间内所有整数的正则（无锚点）。
+  static String _rangePattern(int min, int max) {
+    if (min == max) return '$min';
+    final chunks = <String>[];
+    var lo = min;
+    while (lo <= max) {
+      final len = lo.toString().length;
+      final upper = _pow10(len) - 1;
+      if (upper < max) {
+        chunks.add(_subRangeStr('$lo', '$upper'));
+        lo = upper + 1;
+      } else {
+        chunks.add(_subRangeStr('$lo', '$max'));
+        lo = max + 1;
+      }
+    }
+    return chunks.length == 1 ? chunks.first : '(?:${chunks.join('|')})';
+  }
+
+  /// 构造等宽字符串 min/max 的区间正则（a.length == b.length）。
+  static String _subRangeStr(String a, String b) {
+    int i = 0;
+    while (i < a.length && a[i] == b[i]) {
+      i++;
+    }
+    final prefix = a.substring(0, i);
+    if (i == a.length) return a;
+    final rem = a.length - i;
+    final da = int.parse(a[i]);
+    final db = int.parse(b[i]);
+    final tailLen = rem - 1;
+    if (tailLen == 0) {
+      return '$prefix[$da-$db]';
+    }
+    final parts = <String>[];
+    if (db - da > 1) {
+      parts.add('$prefix${_digitRange(da + 1, db - 1)}${_anyDigits(tailLen)}');
+    }
+    final minTail = a.substring(i + 1);
+    final maxTail = b.substring(i + 1);
+    final hi9 = '9' * tailLen;
+    final lo0 = '0' * tailLen;
+    parts.add('$prefix$da${_subRangeStr(minTail, hi9)}');
+    parts.add('$prefix$db${_subRangeStr(lo0, maxTail)}');
+    return '(?:${parts.join('|')})';
+  }
+
+  static String _digitRange(int a, int b) => a == b ? '$a' : '[$a-$b]';
+
+  static String _anyDigits(int n) => n <= 0 ? '' : '\\d{$n}';
+
+  static int _pow10(int n) {
+    var v = 1;
+    for (var i = 0; i < n; i++) {
+      v *= 10;
+    }
+    return v;
   }
 }

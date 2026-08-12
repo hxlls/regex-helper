@@ -79,5 +79,54 @@ void main() {
       final r = RegexEngine.generate('提取石碑')!;
       expect(r.pattern, contains('石碑'));
     });
+
+    test('稀有度大于20%小于120%', () {
+      final r = RegexEngine.generate('稀有度大于20%小于120%')!;
+      expect(r.pattern, contains('稀有度'));
+      expect(r.pattern, contains('%'));
+      // 21-119 区间
+      final regex = RegExp(r.pattern);
+      expect(regex.hasMatch('稀有度: 85%'), isTrue);
+      expect(regex.hasMatch('稀有度: 21%'), isTrue);
+      expect(regex.hasMatch('稀有度: 119%'), isTrue);
+      expect(regex.hasMatch('稀有度: 20%'), isFalse);
+      expect(regex.hasMatch('稀有度: 120%'), isFalse);
+    });
+
+    test('大于20小于120（无类型）', () {
+      final r = RegexEngine.generate('大于20小于120')!;
+      expect(r.pattern, isNot(contains('稀有度')));
+      final regex = RegExp(r.pattern);
+      expect(regex.hasMatch('100'), isTrue);
+      expect(regex.hasMatch('20'), isFalse);
+      expect(regex.hasMatch('120'), isFalse);
+    });
+
+    test('物品等级大于80', () {
+      final r = RegexEngine.generate('物品等级大于80')!;
+      expect(r.pattern, contains('物品等级'));
+      final regex = RegExp(r.pattern);
+      expect(regex.hasMatch('物品等级: 90'), isTrue);
+      expect(regex.hasMatch('物品等级: 80'), isFalse);
+    });
+
+    test('大于等于20小于等于120（含边界）', () {
+      final r = RegexEngine.generate('大于等于20小于等于120')!;
+      final regex = RegExp(r.pattern);
+      expect(regex.hasMatch('20'), isTrue);
+      expect(regex.hasMatch('120'), isTrue);
+      expect(regex.hasMatch('19'), isFalse);
+      expect(regex.hasMatch('121'), isFalse);
+    });
+
+    test('区间生成覆盖跨位数', () {
+      final r = RegexEngine.generate('大于95小于105')!;
+      final regex = RegExp(r.pattern);
+      for (var i = 96; i <= 104; i++) {
+        expect(regex.hasMatch('$i'), isTrue, reason: '$i 应在区间内');
+      }
+      expect(regex.hasMatch('95'), isFalse);
+      expect(regex.hasMatch('105'), isFalse);
+    });
   });
 }
