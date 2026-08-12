@@ -1,5 +1,6 @@
 // 数据参考自 cnpoe.com/poe2/regex 正则工坊（POE2 地图/石板/机制正则），
 // 为正则表达式用途的游戏数据，可在本地离线使用。
+// 可通过「管理」功能新增/修改/删除自定义词条，以适配游戏版本更新。
 
 class Poe2RegexItem {
   final String id;
@@ -7,13 +8,37 @@ class Poe2RegexItem {
   final String cn;
   final String? tc;
   final String group;
+  final String category;
   const Poe2RegexItem({
     required this.id,
     required this.label,
     required this.cn,
     this.tc,
     this.group = '',
+    this.category = '',
   });
+
+  bool get isCustom => category.isNotEmpty;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'label': label,
+        'cn': cn,
+        'tc': tc ?? '',
+        'group': group,
+        'category': category,
+      };
+
+  factory Poe2RegexItem.fromJson(Map<String, dynamic> json) => Poe2RegexItem(
+        id: json['id'] as String? ?? '',
+        label: json['label'] as String? ?? '',
+        cn: json['cn'] as String? ?? '',
+        tc: (json['tc'] as String?)?.isEmpty == true
+            ? null
+            : json['tc'] as String?,
+        group: json['group'] as String? ?? '',
+        category: json['category'] as String? ?? '',
+      );
 }
 
 const List<Poe2RegexItem> kPoe2MapAffixes = [

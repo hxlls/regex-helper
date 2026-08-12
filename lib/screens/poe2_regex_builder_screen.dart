@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 
 import '../data/poe2_regex_data.dart';
 import '../models/regex_template.dart';
+import '../services/poe2_regex_store.dart';
 import '../services/template_store.dart';
+import 'poe2_regex_manage_screen.dart';
 
 class Poe2RegexBuilderScreen extends StatefulWidget {
   const Poe2RegexBuilderScreen({super.key});
@@ -23,6 +25,19 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   final Set<String> _specialSelected = {};
   final TextEditingController _customController = TextEditingController();
   bool _andMode = false;
+  final _store = Poe2RegexStore();
+  List<Poe2RegexItem> _customItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustom();
+  }
+
+  Future<void> _loadCustom() async {
+    final items = await _store.load();
+    if (mounted) setState(() => _customItems = items);
+  }
 
   @override
   void dispose() {
@@ -54,18 +69,25 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
       case 1:
         return _filteredMechanicMods;
       case 2:
-        return kPoe2Tablet;
+        return [...kPoe2Tablet, ..._customOf('tablet')];
       case 3:
-        return kPoe2ItemClasses;
+        return [...kPoe2ItemClasses, ..._customOf('classes')];
       case 4:
-        return kPoe2SpecialMods;
+        return [...kPoe2SpecialMods, ..._customOf('special')];
       default:
         return const [];
     }
   }
 
+  List<Poe2RegexItem> _customOf(String category) {
+    return _customItems.where((e) => e.category == category).toList();
+  }
+
   List<Poe2RegexItem> get _filteredMapAffixes {
-    var list = kPoe2MapAffixes;
+    var list = <Poe2RegexItem>[
+      ...kPoe2MapAffixes,
+      ..._customOf('maps'),
+    ];
     if (_affixFilter == '前缀') {
       list = list.where((e) => e.group == '前缀').toList();
     } else if (_affixFilter == '后缀') {
@@ -80,8 +102,12 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   }
 
   List<Poe2RegexItem> get _filteredMechanicMods {
-    if (_search.isEmpty) return kPoe2MechanicMods;
-    return kPoe2MechanicMods
+    final all = <Poe2RegexItem>[
+      ...kPoe2MechanicMods,
+      ..._customOf('mechanics'),
+    ];
+    if (_search.isEmpty) return all;
+    return all
         .where((e) => e.label.contains(_search) || e.cn.contains(_search))
         .toList();
   }
@@ -197,6 +223,20 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('POE2 正则构建器'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit_note),
+                tooltip: '管理自定义词条',
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const Poe2RegexManageScreen()),
+                  );
+                  _loadCustom();
+                },
+              ),
+            ],
             bottom: TabBar(
               isScrollable: true,
               tabAlignment: TabAlignment.start,
