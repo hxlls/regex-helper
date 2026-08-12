@@ -9,6 +9,7 @@ import '../services/template_store.dart';
 import 'settings_screen.dart';
 import 'templates_screen.dart';
 import 'poe2_affix_screen.dart';
+import 'poe2_regex_builder_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -133,6 +134,13 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const Poe2AffixScreen()),
+    );
+  }
+
+  void _openPoe2Builder() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const Poe2RegexBuilderScreen()),
     );
   }
 
@@ -329,14 +337,29 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.deepOrange.shade700,
-              side: BorderSide(color: Colors.deepOrange.shade200),
-            ),
-            icon: const Icon(Icons.style, size: 18),
-            label: const Text('POE2 词条库（附加伤害/抗性/属性等）'),
-            onPressed: _openPoe2Affixes,
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.deepOrange.shade700,
+                  side: BorderSide(color: Colors.deepOrange.shade200),
+                ),
+                icon: const Icon(Icons.style, size: 18),
+                label: const Text('POE2 词条库'),
+                onPressed: _openPoe2Affixes,
+              ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.indigo.shade700,
+                  side: BorderSide(color: Colors.indigo.shade200),
+                ),
+                icon: const Icon(Icons.map, size: 18),
+                label: const Text('POE2 正则构建器'),
+                onPressed: _openPoe2Builder,
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           if (_result != null)

@@ -498,24 +498,25 @@ class RegexEngine {
     return buffer.toString();
   }
 
-  /// 流放之路2 词条识别：根据描述生成匹配词条行的正则。
+  /// 流放之路2 词条识别：根据描述生成匹配词条行的正则（简繁通用）。
   static GenerationResult? _tryAffix(
       String lower, String action, bool anchoredHint) {
     // 1) 附加 X 至 Y 的{元素}伤害
     const elements = <String, String>{
       '火焰伤害': '火焰',
       '火伤': '火焰',
+      '冰霜伤害': '冰霜',
       '冰冷伤害': '冰冷',
-      '冰霜伤害': '冰冷',
       '冰伤': '冰冷',
       '闪电伤害': '闪电',
+      '電伤': '闪电',
       '电伤': '闪电',
       '混沌伤害': '混沌',
       '混沌伤': '混沌',
       '物理伤害': '物理',
       '物伤': '物理',
     };
-    if (lower.contains('附加')) {
+    if (lower.contains('附加') || lower.contains('攻擊附加') || lower.contains('攻击附加')) {
       String? element;
       for (final e in elements.entries) {
         if (lower.contains(e.key)) {
@@ -524,23 +525,32 @@ class RegexEngine {
         }
       }
       if (element != null) {
+        final elem = element == '冰霜' ? '(?:冰霜|冰冷)'
+            : element == '闪电'
+                ? '(?:闪电|閃電)'
+                : element == '火焰'
+                    ? '(?:火焰|火)'
+                    : element;
         return GenerationResult(
-          pattern: '附加\\s*\\d+\\s*至\\s*\\d+\\s*的$element伤害',
+          pattern:
+              '(?:攻击|攻擊)?附加\\s*\\d+\\s*(?:至|-)\\s*\\d+\\s*(?:的)?(?:基础|基礎)?$elem(?:伤害|傷害)',
           explanation: '匹配「附加$element伤害」词条（数值区间可变）',
           anchored: action == 'match' || anchoredHint,
         );
       }
     }
 
-    // 2) 元素抗性
+    // 2) 元素抗性（简繁 + 两种数值顺序）
     const resists = <String, String>{
-      '火焰抗性': '火焰',
-      '火抗': '火焰',
-      '冰冷抗性': '冰冷',
-      '冰抗': '冰冷',
-      '闪电抗性': '闪电',
-      '电抗': '闪电',
-      '混沌抗性': '混沌',
+      '火焰抗性': '火焰抗性',
+      '火抗': '火焰抗性',
+      '冰霜抗性': '(?:冰霜|冰冷)抗性',
+      '冰冷抗性': '(?:冰霜|冰冷)抗性',
+      '冰抗': '(?:冰霜|冰冷)抗性',
+      '闪电抗性': '(?:闪电|閃電)抗性',
+      '電抗': '(?:闪电|閃電)抗性',
+      '电抗': '(?:闪电|閃電)抗性',
+      '混沌抗性': '混沌抗性',
     };
     String? resist;
     for (final e in resists.entries) {
@@ -550,15 +560,14 @@ class RegexEngine {
       }
     }
     if (resist != null) {
-      final pattern = '$resist抗性';
       return GenerationResult(
-        pattern: '[+\\-]?\\s*\\d+%\\s*$pattern',
-        explanation: '匹配「$pattern」词条',
+        pattern: '(?:$resist\\s*[+\\-]?\\s*\\d+%|[+\\-]?\\s*\\d+%\\s*$resist)',
+        explanation: '匹配「$resist」词条',
         anchored: action == 'match' || anchoredHint,
       );
     }
 
-    // 3) 属性（力量/敏捷/智慧）
+    // 3) 属性（力量/敏捷/智慧，支持简繁与点/點）
     if (lower.contains('力量') ||
         lower.contains('敏捷') ||
         lower.contains('智慧')) {
@@ -568,18 +577,22 @@ class RegexEngine {
               ? '敏捷'
               : '力量';
       return GenerationResult(
-        pattern: '[+\\-]?\\s*\\d+\\s*$attr',
+        pattern: '[+\\-]?\\s*\\d+\\s*(?:点|點)?$attr',
         explanation: '匹配「$attr」属性词条',
         anchored: action == 'match' || anchoredHint,
       );
     }
 
-    // 4) 最大生命 / 最大魔力
+    // 4) 生命上限 / 魔力上限（简繁）
     if (lower.contains('最大生命') ||
-        lower.contains('最大魔力') ||
         lower.contains('生命上限') ||
-        lower.contains('魔力上限')) {
-      final t = lower.contains('魔力') ? '最大魔力' : '最大生命';
+        lower.contains('最大魔力') ||
+        lower.contains('魔力上限') ||
+        lower.contains('生命上限提高') ||
+        lower.contains('最大生命提高')) {
+      final t = lower.contains('魔力')
+          ? '(?:魔力上限|最大魔力)'
+          : '(?:生命上限|最大生命)';
       return GenerationResult(
         pattern: '[+\\-]?\\s*\\d+\\s*$t',
         explanation: '匹配「$t」词条',
@@ -587,45 +600,71 @@ class RegexEngine {
       );
     }
 
-    // 5) 攻击/施放/移动速度
+    // 5) 攻击/施放/施法/移动速度（简繁）
     if (lower.contains('攻击速度') ||
         lower.contains('施放速度') ||
+        lower.contains('施法速度') ||
         lower.contains('移动速度') ||
         lower.contains('攻速') ||
-        lower.contains('施速')) {
-      final t = lower.contains('施放速度') || lower.contains('施速')
-          ? '施放速度'
-          : lower.contains('移动速度')
-              ? '移动速度'
-              : '攻击速度';
+        lower.contains('施速') ||
+        lower.contains('移速')) {
+      final t = lower.contains('施放速度') || lower.contains('施法速度') || lower.contains('施速')
+          ? '(?:施法速度|施放速度)'
+          : lower.contains('移动速度') || lower.contains('移速')
+              ? '(?:移动速度|移動速度)'
+              : '(?:攻击速度|攻擊速度)';
       return GenerationResult(
-        pattern: '(?:增加|提高|降低|减少)?\\s*\\d+%\\s*$t',
+        pattern: '(?:增加|提高|降低|減少)?\\s*\\d+%\\s*$t',
         explanation: '匹配「$t」词条',
         anchored: action == 'match' || anchoredHint,
       );
     }
 
-    // 6) 技能宝石等级
-    if (lower.contains('技能宝石等级') || lower.contains('技能等级')) {
+    // 6) 技能宝石等级（简繁）
+    if (lower.contains('技能宝石等级') ||
+        lower.contains('技能等级') ||
+        lower.contains('技能寶石等級') ||
+        lower.contains('技能等級')) {
       return GenerationResult(
-        pattern: '[+\\-]?\\s*\\d+\\s*至(?:所有)?技能宝石等级|\\+\\s*\\d+\\s*技能(?:宝石)?等级',
+        pattern:
+            '[+\\-]?\\s*\\d+\\s*至(?:所有)?(?:技能宝石|技能寶石)等级|[+\\-]?\\s*\\d+\\s*(?:技能宝石|技能寶石)?等级',
         explanation: '匹配技能宝石等级词条',
         anchored: action == 'match' || anchoredHint,
       );
     }
 
-    // 7) 护甲/闪避/能量护盾
+    // 7) 护甲/闪避/能量护盾（简繁）
     if (lower.contains('护甲') ||
         lower.contains('闪避') ||
-        lower.contains('能量护盾')) {
-      final t = lower.contains('能量护盾')
-          ? '能量护盾'
-          : lower.contains('闪避')
-              ? '闪避值'
-              : '护甲';
+        lower.contains('能量护盾') ||
+        lower.contains('護甲') ||
+        lower.contains('閃避') ||
+        lower.contains('能量護盾')) {
+      final t = lower.contains('能量护盾') || lower.contains('能量護盾')
+          ? '(?:能量护盾|能量護盾)'
+          : lower.contains('闪避') || lower.contains('閃避')
+              ? '(?:闪避值|閃避值)'
+              : '(?:护甲|護甲)';
       return GenerationResult(
-        pattern: '(?:$t\\s*\\+\\s*\\d+|\\+\\s*\\d+\\s*$t)',
+        pattern: '(?:$t\\s*[:：]?\\s*\\+?\\s*\\d+|\\+\\s*\\d+\\s*$t)',
         explanation: '匹配「$t」词条',
+        anchored: action == 'match' || anchoredHint,
+      );
+    }
+
+    // 8) 物品稀有度 / 物品数量（简繁）
+    if (lower.contains('稀有度') || lower.contains('物品数量') || lower.contains('數量')) {
+      if (lower.contains('稀有度')) {
+        return GenerationResult(
+          pattern:
+              '(?:增加|提高|降低|減少)?\\s*\\d+%\\s*(?:物品稀有度|找到的物品稀有度|稀有度)',
+          explanation: '匹配稀有度词条',
+          anchored: action == 'match' || anchoredHint,
+        );
+      }
+      return GenerationResult(
+        pattern: '(?:增加|提高|降低|減少)?\\s*\\d+%\\s*(?:物品数量|物品數量|数量|數量)',
+        explanation: '匹配数量词条',
         anchored: action == 'match' || anchoredHint,
       );
     }

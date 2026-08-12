@@ -132,10 +132,12 @@ void main() {
     test('POE2 附加火焰伤害', () {
       final r = RegexEngine.generate('匹配附加火焰伤害')!;
       expect(r.pattern, contains('附加'));
-      expect(r.pattern, contains('火焰伤害'));
+      expect(r.pattern, contains('火'));
       final regex = RegExp(r.pattern);
       expect(regex.hasMatch('附加 3 至 6 的火焰伤害'), isTrue);
       expect(regex.hasMatch('附加 10 至 15 的火焰伤害'), isTrue);
+      expect(regex.hasMatch('攻击附加 1 - 4 物理伤害'), isFalse);
+      expect(regex.hasMatch('攻擊附加3至6火焰傷害'), isTrue);
     });
 
     test('POE2 火焰抗性', () {
