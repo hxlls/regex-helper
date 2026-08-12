@@ -1,6 +1,4 @@
-// 数据参考自 cnpoe.com/poe2/regex 正则工坊，并对照 poe2db.tw 校正分类：
-// 地图词缀 = 引路石/地图通用词缀；地图机制 = 裂隙/先祖秘藏/迷雾/驱灵/深渊/灯塔等赛季词缀；
-// 装备词缀 = 装备上的数值词缀。
+// 数据参考自 cnpoe.com/poe2/regex 正则工坊，并对照 poe2db.tw 校正分类。
 class Poe2RegexItem {
   final String id;
   final String label;
@@ -78,6 +76,8 @@ const List<Poe2RegexItem> kPoe2MapAffixes = [
   Poe2RegexItem(id: 'tp_azmeri', label: '额外阿兹莫里之灵', cn: '地图包含.*额外的阿兹莫里之灵', tc: '', group: '地图词缀', category: ''),
   Poe2RegexItem(id: 'tp_rogue', label: '额外盗贼流放者', cn: '地图内会出现.*额外的盗贼流放者', tc: '', group: '地图词缀', category: ''),
   Poe2RegexItem(id: 'tp_ritual_altar', label: '额外召唤法阵', cn: '地图包含.*额外的召唤法阵', tc: '', group: '地图词缀', category: ''),
+  Poe2RegexItem(id: 'quality', label: '品质', cn: '品质.*[0-9]', tc: '', group: '地图词缀', category: ''),
+  Poe2RegexItem(id: 'sockets', label: '插槽', cn: '插槽', tc: '', group: '地图词缀', category: ''),
 ];
 
 const List<Poe2RegexItem> kPoe2MechanicMods = [
@@ -129,6 +129,16 @@ const List<Poe2RegexItem> kPoe2MechanicMods = [
   Poe2RegexItem(id: 'ds_ritual_altar', label: '召唤法阵几率提高', cn: '召唤法阵', tc: '', group: '惊悸迷雾', category: ''),
   Poe2RegexItem(id: 'ds_random_mod', label: '额外随机词缀', cn: '额外.*随机.*词缀', tc: '', group: '惊悸迷雾', category: ''),
   Poe2RegexItem(id: 'ds_boss_mod', label: '传奇怪物额外词缀', cn: '传奇.*额外.*词缀', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_extra_strongbox', label: '额外保险箱', cn: '额外.*保险箱', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_extra_shrine', label: '额外神龛', cn: '额外.*神龛', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_extra_essence', label: '额外精华', cn: '额外.*精华', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_extra_azmeri', label: '额外阿兹莫里之灵', cn: '额外.*阿兹莫里之灵', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_boss_waystone', label: '首领引路石数量提高', cn: '首领.*引路石', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_boss_exp', label: '首领经验值提高', cn: '首领.*经验', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_boss_rarity', label: '首领物品稀有度提高', cn: '首领.*稀有度', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_boss_quant', label: '首领物品数量提高', cn: '首领.*数量', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_shrine_rate', label: '神龛几率提高', cn: '神龛', tc: '', group: '惊悸迷雾', category: ''),
+  Poe2RegexItem(id: 'ds_strongbox_rate', label: '保险箱几率提高', cn: '保险箱', tc: '', group: '惊悸迷雾', category: ''),
   Poe2RegexItem(id: 'rs_tribute', label: '祭坛献祭贡品提高', cn: '贡品.*提高', tc: '', group: '驱灵仪式', category: ''),
   Poe2RegexItem(id: 'rs_reroll_cost', label: '重置恩典消耗贡品降低', cn: '重置.*降低', tc: '', group: '驱灵仪式', category: ''),
   Poe2RegexItem(id: 'rs_defer_cost', label: '延时恩典消耗贡品降低', cn: '延时.*降低', tc: '', group: '驱灵仪式', category: ''),
