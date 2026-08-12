@@ -1,0 +1,62 @@
+name: Build Windows & Android
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    name: Windows exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+      - name: Get packages
+        run: flutter pub get
+      - name: Test
+        run: flutter test
+      - name: Build Windows exe
+        run: flutter build windows --release
+      - name: Package exe
+        shell: pwsh
+        run: |
+          $src = "build\windows\x64\runner\Release"
+          $dest = "regex-helper-windows"
+          Copy-Item -Recurse $src $dest
+          Compress-Archive -Path $dest -DestinationPath "regex-helper-windows.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: regex-helper-windows
+          path: regex-helper-windows.zip
+
+  build-android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Get packages
+        run: flutter pub get
+      - name: Test
+        run: flutter test
+      - name: Build APK
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: regex-helper-android
+          path: build/app/outputs/flutter-apk/*.apk
