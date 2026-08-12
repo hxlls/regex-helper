@@ -56,7 +56,41 @@ jobs:
         run: flutter test
       - name: Build APK
         run: flutter build apk --release
+      - name: Rename APK
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk regex-helper.apk
       - uses: actions/upload-artifact@v4
         with:
           name: regex-helper-android
-          path: build/app/outputs/flutter-apk/*.apk
+          path: regex-helper.apk
+
+  release:
+    name: Create GitHub Release
+    needs: [build-windows, build-android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows build
+        uses: actions/download-artifact@v4
+        with:
+          name: regex-helper-windows
+          path: dist/
+      - name: Download Android build
+        uses: actions/download-artifact@v4
+        with:
+          name: regex-helper-android
+          path: dist/
+      - name: Rename assets with version
+        shell: bash
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          mv dist/regex-helper-windows.zip "dist/regex-helper-windows-${VER}.zip"
+          mv dist/regex-helper.apk "dist/regex-helper-${VER}.apk"
+          ls -la dist/
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          make_latest: true
