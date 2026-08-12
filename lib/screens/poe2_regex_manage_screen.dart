@@ -118,7 +118,7 @@ class _Poe2RegexManageScreenState extends State<Poe2RegexManageScreen> {
                   onChanged: (v) => setDialogState(() => category = v ?? 'maps'),
                 ),
                 const SizedBox(height: 12),
-                if (category == 'maps')
+                if (category == 'items')
                   DropdownButtonFormField<String>(
                     value: group,
                     decoration: const InputDecoration(
@@ -131,7 +131,7 @@ class _Poe2RegexManageScreenState extends State<Poe2RegexManageScreen> {
                     ],
                     onChanged: (v) => setDialogState(() => group = v ?? '前缀'),
                   ),
-                if (category == 'maps') const SizedBox(height: 12),
+                if (category == 'items') const SizedBox(height: 12),
                 TextField(
                   controller: labelController,
                   decoration: const InputDecoration(

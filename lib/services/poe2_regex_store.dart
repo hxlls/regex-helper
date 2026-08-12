@@ -34,6 +34,7 @@ const List<String> kPoe2RegexCategories = [
   '地图词缀',
   '地图机制',
   '石板',
+  '装备词缀',
   '装备类别',
   '特殊词缀',
 ];
@@ -42,6 +43,7 @@ const Map<String, String> kPoe2RegexCategoryIds = {
   '地图词缀': 'maps',
   '地图机制': 'mechanics',
   '石板': 'tablet',
+  '装备词缀': 'items',
   '装备类别': 'classes',
   '特殊词缀': 'special',
 };

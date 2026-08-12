@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/poe2_regex_data.dart';
+import '../data/poe2_special_mods.dart';
 import '../models/regex_template.dart';
 import '../services/poe2_regex_store.dart';
 import '../services/template_store.dart';
@@ -40,6 +41,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   final Set<String> _selected = {};
   final Set<String> _mechSelected = {};
   final Set<String> _tabletSelected = {};
+  final Set<String> _itemModSelected = {};
   final Set<String> _classSelected = {};
   final Set<String> _specialSelected = {};
   final TextEditingController _customController = TextEditingController();
@@ -111,8 +113,10 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
       case 2:
         return _tabletSelected;
       case 3:
-        return _classSelected;
+        return _itemModSelected;
       case 4:
+        return _classSelected;
+      case 5:
         return _specialSelected;
       default:
         return {};
@@ -128,8 +132,10 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
       case 2:
         return [...kPoe2Tablet, ..._customOf('tablet')];
       case 3:
-        return [...kPoe2ItemClasses, ..._customOf('classes')];
+        return _filteredItemMods;
       case 4:
+        return [...kPoe2ItemClasses, ..._customOf('classes')];
+      case 5:
         return [...kPoe2SpecialMods, ..._customOf('special')];
       default:
         return const [];
@@ -144,6 +150,19 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     var list = <Poe2RegexItem>[
       ...kPoe2MapAffixes,
       ..._customOf('maps'),
+    ];
+    if (_search.isNotEmpty) {
+      list = list
+          .where((e) => e.label.contains(_search) || e.cn.contains(_search))
+          .toList();
+    }
+    return list;
+  }
+
+  List<Poe2RegexItem> get _filteredItemMods {
+    var list = <Poe2RegexItem>[
+      ...kPoe2ItemModifiers,
+      ..._customOf('items'),
     ];
     if (_affixFilter == '前缀') {
       list = list.where((e) => e.group == '前缀').toList();
@@ -170,7 +189,8 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   }
 
   String _patternOf(Poe2RegexItem item, int tabIndex) {
-    if (tabIndex == 0 || tabIndex == 4) {
+    // 装备词缀(3) 和 特殊词缀(5) 有繁体正则可切换
+    if (tabIndex == 3 || tabIndex == 5) {
       return _isTc ? (item.tc?.isNotEmpty == true ? item.tc! : item.cn) : item.cn;
     }
     return item.cn;
@@ -373,7 +393,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 6,
+      length: 7,
       child: Builder(builder: (context) {
         final controller = DefaultTabController.of(context);
         _tabController = controller;
@@ -401,6 +421,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                 Tab(text: '地图词缀'),
                 Tab(text: '地图机制'),
                 Tab(text: '石板'),
+                Tab(text: '装备词缀'),
                 Tab(text: '装备类别'),
                 Tab(text: '特殊词缀'),
                 Tab(text: '自定义'),
@@ -437,7 +458,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   ],
                 ),
               ),
-              if (controller.index == 0)
+              if (controller.index == 3)
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 8),
@@ -461,6 +482,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                     _buildList(controller, 2),
                     _buildList(controller, 3),
                     _buildList(controller, 4),
+                    _buildList(controller, 5),
                     _buildCustom(controller),
                   ],
                 ),
@@ -490,7 +512,10 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   selected: set.contains(item.id),
                   minController: _minControllerOf(item.id),
                   maxController: _maxControllerOf(item.id),
-                  showValueInput: tabIndex == 0 || tabIndex == 1 || tabIndex == 4,
+                  showValueInput: tabIndex == 0 ||
+                      tabIndex == 1 ||
+                      tabIndex == 3 ||
+                      tabIndex == 5,
                   onToggle: (_) => _toggle(controller, item),
                   onChanged: (_) => setState(() {}),
                 ),
