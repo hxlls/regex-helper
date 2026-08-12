@@ -25,25 +25,34 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   final Set<String> _classSelected = {};
   final Set<String> _specialSelected = {};
   final TextEditingController _customController = TextEditingController();
-  bool _andMode = false;
+  int _mode = 0; // 0=任一(或) 1=全部(且) 2=隐藏(不含)
   final _store = Poe2RegexStore();
   List<Poe2RegexItem> _customItems = [];
-  final Map<String, TextEditingController> _valueControllers = {};
+  final Map<String, TextEditingController> _minControllers = {};
+  final Map<String, TextEditingController> _maxControllers = {};
 
   @override
   void dispose() {
     _customController.dispose();
-    for (final c in _valueControllers.values) {
+    for (final c in _minControllers.values) {
+      c.dispose();
+    }
+    for (final c in _maxControllers.values) {
       c.dispose();
     }
     super.dispose();
   }
 
-  TextEditingController _valueControllerOf(String id) {
-    return _valueControllers.putIfAbsent(id, TextEditingController.new);
+  TextEditingController _minControllerOf(String id) {
+    return _minControllers.putIfAbsent(id, TextEditingController.new);
   }
 
-  String _valueOf(String id) => _valueControllers[id]?.text ?? '';
+  TextEditingController _maxControllerOf(String id) {
+    return _maxControllers.putIfAbsent(id, TextEditingController.new);
+  }
+
+  String _minOf(String id) => _minControllers[id]?.text ?? '';
+  String _maxOf(String id) => _maxControllers[id]?.text ?? '';
 
   @override
   void initState() {
@@ -130,27 +139,24 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     return item.cn;
   }
 
-  static String _applyValue(String pattern, String value) {
-    final v = value.trim();
-    if (v.isEmpty) return pattern;
+  static String _applyRange(String pattern, String minText, String maxText) {
+    final minStr = minText.trim();
+    final maxStr = maxText.trim();
+    if (minStr.isEmpty && maxStr.isEmpty) return pattern;
+    int? min = int.tryParse(minStr);
+    int? max = int.tryParse(maxStr);
+    if (min != null && max != null && min > max) {
+      final t = min;
+      min = max;
+      max = t;
+    }
     String numPattern;
-    // 范围：15-20 / 15到20 / 15至20 / 15~20
-    final rangeM =
-        RegExp(r'^(\d+(?:\.\d+)?)\s*(?:-|到|至|~)\s*(\d+(?:\.\d+)?)')
-            .firstMatch(v);
-    if (rangeM != null) {
-      final a = double.parse(rangeM.group(1)!).round();
-      final b = double.parse(rangeM.group(2)!).round();
-      final lo = a < b ? a : b;
-      final hi = a < b ? b : a;
-      numPattern = NumberRangeRegex.between(lo, hi);
+    if (min != null && max != null) {
+      numPattern = NumberRangeRegex.between(min, max);
+    } else if (min != null) {
+      numPattern = NumberRangeRegex.gte(min);
     } else {
-      // 比较运算符 + 数值：>50、>=50、<50、<=50、=50、50
-      final m = RegExp(r'^(>=|<=|>|<|=)?\s*(\d+(?:\.\d+)?)').firstMatch(v);
-      if (m == null) return pattern;
-      final op = m.group(1) ?? '=';
-      final num = double.parse(m.group(2)!).round();
-      numPattern = NumberRangeRegex.byOperator(op, num);
+      numPattern = NumberRangeRegex.lte(max!);
     }
     // 用生成的数值正则替换模式中的数字占位符 [0-9.]+ 或 [0-9]+
     final replaced =
@@ -169,11 +175,17 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     final selectedSet = _setFor(tab);
     final patterns = items
         .where((e) => selectedSet.contains(e.id))
-        .map((e) => _applyValue(_patternOf(e, tab), _valueOf(e.id)))
+        .map((e) =>
+            _applyRange(_patternOf(e, tab), _minOf(e.id), _maxOf(e.id)))
         .where((p) => p.isNotEmpty)
         .toList();
     if (patterns.isEmpty) return '';
-    if (_andMode) {
+    if (_mode == 2) {
+      // 隐藏：匹配不包含任何所选词条的文本
+      final neg = patterns.map((p) => '(?!$p)').join('');
+      return '^(?:$neg[\\s\\S])*\$';
+    }
+    if (_mode == 1) {
       // 跨行安全：[\s\S]* 可跨越换行，多个词条须同时存在
       return patterns.map((p) => '(?=[\\s\\S]*$p)').join('');
     }
@@ -371,7 +383,8 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                 _ItemTile(
                   item: item,
                   selected: set.contains(item.id),
-                  controller: _valueControllerOf(item.id),
+                  minController: _minControllerOf(item.id),
+                  maxController: _maxControllerOf(item.id),
                   showValueInput: tabIndex == 0 || tabIndex == 1 || tabIndex == 4,
                   onToggle: (_) => _toggle(controller, item),
                   onChanged: (_) => setState(() {}),
@@ -413,7 +426,8 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   _ItemTile(
                     item: item,
                     selected: set.contains(item.id),
-                    controller: _valueControllerOf(item.id),
+                    minController: _minControllerOf(item.id),
+                    maxController: _maxControllerOf(item.id),
                     showValueInput: true,
                     onToggle: (_) => _toggle(controller, item),
                     onChanged: (_) => setState(() {}),
@@ -485,16 +499,17 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   const Text('输出',
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(width: 12),
-                  SegmentedButton<bool>(
+                  SegmentedButton<int>(
                     style: const ButtonStyle(
                         visualDensity: VisualDensity.compact),
                     segments: const [
-                      ButtonSegment(value: false, label: Text('任一(或)')),
-                      ButtonSegment(value: true, label: Text('全部(且)')),
+                      ButtonSegment(value: 0, label: Text('任一(或)')),
+                      ButtonSegment(value: 1, label: Text('全部(且)')),
+                      ButtonSegment(value: 2, label: Text('隐藏(不含)')),
                     ],
-                    selected: {_andMode},
+                    selected: {_mode},
                     onSelectionChanged: (s) =>
-                        setState(() => _andMode = s.first),
+                        setState(() => _mode = s.first),
                   ),
                   const Spacer(),
                   if (output.isNotEmpty)
@@ -521,9 +536,11 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    _andMode
-                        ? '全部(且)：一件物品需同时存在这些词条（可跨行）'
-                        : '任一(或)：匹配任意一个词条即可',
+                    _mode == 0
+                        ? '任一(或)：匹配任意一个词条即可'
+                        : _mode == 1
+                            ? '全部(且)：一件物品需同时存在这些词条（可跨行）'
+                            : '隐藏(不含)：匹配不包含这些词条的物品',
                     style: TextStyle(
                         fontSize: 11, color: Colors.blueGrey.shade600),
                   ),
@@ -572,7 +589,8 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
 class _ItemTile extends StatelessWidget {
   final Poe2RegexItem item;
   final bool selected;
-  final TextEditingController controller;
+  final TextEditingController minController;
+  final TextEditingController maxController;
   final bool showValueInput;
   final ValueChanged<bool> onToggle;
   final ValueChanged<String> onChanged;
@@ -580,7 +598,8 @@ class _ItemTile extends StatelessWidget {
   const _ItemTile({
     required this.item,
     required this.selected,
-    required this.controller,
+    required this.minController,
+    required this.maxController,
     required this.showValueInput,
     required this.onToggle,
     required this.onChanged,
@@ -609,27 +628,67 @@ class _ItemTile extends StatelessWidget {
         if (selected && showValueInput)
           Padding(
             padding: const EdgeInsets.only(left: 52, right: 16, bottom: 8),
-            child: TextField(
-              controller: controller,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: '输入数值：50、>50、<50、15-20（范围）',
-                hintStyle: TextStyle(
-                    fontSize: 12, color: Colors.grey.shade500),
-                prefixIcon: const Icon(Icons.pin, size: 18),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                const Text('下限',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 56,
+                  child: TextField(
+                    controller: minController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13),
+                    onChanged: onChanged,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: '0',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
-              ),
-              style: const TextStyle(fontSize: 13),
-              onChanged: onChanged,
+                const SizedBox(width: 12),
+                const Text('上限',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 56,
+                  child: TextField(
+                    controller: maxController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13),
+                    onChanged: onChanged,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: '999',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _hint,
+                    style: TextStyle(
+                        fontSize: 11, color: Colors.grey.shade500),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
       ],
     );
+  }
+
+  String get _hint {
+    if (item.cn.contains('[0-9.]+') || item.cn.contains('[0-9]+')) {
+      return '填数值替换模式中的数字';
+    }
+    return '该词条无数字占位符';
   }
 }
