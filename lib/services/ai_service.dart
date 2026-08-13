@@ -32,7 +32,7 @@ class AiService {
       'temperature': 0.2,
     });
 
-    final response = await http
+    Future<http.Response> send() => http
         .post(
           Uri.parse(url),
           headers: {
@@ -43,14 +43,45 @@ class AiService {
         )
         .timeout(const Duration(seconds: 60));
 
+    // 429 限流/5xx 服务异常时自动重试，指数退避最多 3 次
+    var response = await send();
+    var attempt = 0;
+    while (_isRetryable(response.statusCode) && attempt < 3) {
+      attempt++;
+      await Future.delayed(Duration(seconds: attempt * 2));
+      response = await send();
+    }
+
     if (response.statusCode != 200) {
-      throw Exception('API 错误 (${response.statusCode}): ${response.body}');
+      throw Exception(_friendlyError(response.statusCode, response.body));
     }
 
     final data = jsonDecode(utf8.decode(response.bodyBytes));
     final content =
         (data['choices'] as List).first['message']['content'] as String;
     return _parseContent(content);
+  }
+
+  static bool _isRetryable(int code) =>
+      code == 429 || (code >= 500 && code < 600);
+
+  static String _friendlyError(int status, String rawBody) {
+    final body = rawBody.trim();
+    final detail = body.length > 120 ? '${body.substring(0, 120)}…' : body;
+    switch (status) {
+      case 429:
+        return '请求过于频繁或额度不足（429 限流）。请稍后再试，或检查账号余额/API 配额。';
+      case 401:
+        return 'API Key 无效或已过期（401），请在设置中检查 API Key。';
+      case 403:
+        return '没有访问权限（403），请检查 API Key 的权限或服务是否已开通。';
+      case 404:
+        return '接口地址不正确（404），请检查 API 地址是否包含 /v1。';
+      case 400:
+        return '请求参数错误（400），请检查模型名是否填写正确。';
+      default:
+        return 'API 错误 ($status)：$detail';
+    }
   }
 
   AiResult _parseContent(String content) {

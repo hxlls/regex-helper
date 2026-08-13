@@ -198,9 +198,10 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   }
 
   String _patternOf(Poe2RegexItem item, int tabIndex) {
-    // 装备词缀(2) 有繁体正则可切换
-    if (tabIndex == 2) {
-      return _isTc ? (item.tc?.isNotEmpty == true ? item.tc! : item.cn) : item.cn;
+    // 装备词缀(2)、地图词缀(0)、石板机制(1) 均有繁体正则可切换
+    if (_isTc) {
+      final tc = item.tc;
+      if (tc != null && tc.isNotEmpty) return tc;
     }
     return item.cn;
   }
