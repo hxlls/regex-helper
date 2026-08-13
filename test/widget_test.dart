@@ -27,7 +27,9 @@ void main() {
 
     // 裂隙分组专属词条（排在通用词条之后），多次滚动直到可见
     final listFinder = find.byType(ListView).last;
-    for (var i = 0; i < 6 && find.text('孕育赠礼数量提高').evaluate().isEmpty; i++) {
+    for (var i = 0;
+        i < 6 && find.text('孕育赠礼数量提高').evaluate().isEmpty;
+        i++) {
       await tester.drag(listFinder, const Offset(0, -400));
       await tester.pumpAndSettle();
     }
@@ -58,7 +60,9 @@ void main() {
 
     // 滚动到裂隙专属词条「胎贈數量提高」（排在通用词条之后）
     final listFinder = find.byType(ListView).last;
-    for (var i = 0; i < 6 && find.text('胎贈數量提高').evaluate().isEmpty; i++) {
+    for (var i = 0;
+        i < 6 && find.text('胎贈數量提高').evaluate().isEmpty;
+        i++) {
       await tester.drag(listFinder, const Offset(0, -400));
       await tester.pumpAndSettle();
     }
@@ -78,12 +82,40 @@ void main() {
     await tester.tap(find.text('繁'));
     await tester.pumpAndSettle();
 
-    // 怪物伤害提高 是地图词缀列表前几项，直接可见（标题+正则副标题，取第一个）
+    // 繁体模式下词条名显示「怪物傷害提高」，滚动到可见
+    final listFinder = find.byType(ListView).first;
+    for (var i = 0;
+        i < 3 && find.text('怪物傷害提高').evaluate().isEmpty;
+        i++) {
+      await tester.drag(listFinder, const Offset(0, -300));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text('怪物傷害提高').first);
+    await tester.pumpAndSettle();
+
+    // 繁中客户端文本：增加.*[0-9.]+%怪物傷害（怪物伤害提高）出现在输出面板
+    expect(find.textContaining('怪物傷害'), findsWidgets);
+  });
+
+  testWidgets('地图词缀：有数值词条显示数值输入框', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MaterialApp(home: Poe2RegexBuilderScreen()));
+
+    // 简体模式，滚动到「怪物伤害提高」并选中
+    final listFinder = find.byType(ListView).first;
+    for (var i = 0;
+        i < 3 && find.text('怪物伤害提高').evaluate().isEmpty;
+        i++) {
+      await tester.drag(listFinder, const Offset(0, -300));
+      await tester.pumpAndSettle();
+    }
     await tester.tap(find.text('怪物伤害提高').first);
     await tester.pumpAndSettle();
 
-    // 繁中客户端文本：增加.*怪物傷害
-    expect(find.textContaining('增加.*怪物傷害'), findsOneWidget);
+    // 应出现「下限/上限」数值输入框
+    expect(find.text('下限'), findsOneWidget);
+    expect(find.text('上限'), findsOneWidget);
   });
 
   testWidgets('搜索：输入繁体也能搜到简体词条', (WidgetTester tester) async {

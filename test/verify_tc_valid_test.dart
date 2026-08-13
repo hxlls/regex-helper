@@ -85,13 +85,17 @@ void main() {
     expect(ground.cn, contains('冰缓地面'));
     expect(ground.tc, isNot(contains('[0-9')));
 
-    // 所有无数值占位符的词条：cn 与 tc 的一致性由编译期正则校验覆盖
+    // 统计无数值占位符的词条（纯文本词条，如地面/诅咒）
     var noNum = 0;
     for (final e in kPoe2MapAffixes) {
       if (!e.cn.contains('[0-9')) noNum++;
     }
-    // 地图词缀绝大多数是纯文本词条
-    expect(noNum, greaterThan(40));
+    // 纯文本词条与有数值词条并存
+    expect(noNum, greaterThan(5));
+    expect(noNum, lessThan(40));
+    // 有数值词条（怪物伤害提高等）应含占位符，支持数值输入
+    final dmg = kPoe2MapAffixes.firstWhere((e) => e.id == 'ws_mon_dmg');
+    expect(dmg.cn, contains('[0-9'));
   });
 
   test('地图词缀简体/繁体各对应不同的游戏文本（非逐字转换）', () {
