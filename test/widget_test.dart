@@ -50,20 +50,24 @@ void main() {
     await tester.tap(find.text('繁'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('裂隙'));
+    // 繁体模式下词条名也显示繁体（poe2db：胎贈）
+    expect(find.text('胎贈數量提高'), findsNothing);
+
+    await tester.tap(find.text('裂痕'));
     await tester.pumpAndSettle();
 
-    // 滚动到裂隙专属词条「孕育赠礼数量提高」（排在通用词条之后）
+    // 滚动到裂隙专属词条「胎贈數量提高」（排在通用词条之后）
     final listFinder = find.byType(ListView).last;
-    for (var i = 0; i < 6 && find.text('孕育赠礼数量提高').evaluate().isEmpty; i++) {
+    for (var i = 0; i < 6 && find.text('胎贈數量提高').evaluate().isEmpty; i++) {
       await tester.drag(listFinder, const Offset(0, -400));
       await tester.pumpAndSettle();
     }
-    await tester.tap(find.text('孕育赠礼数量提高'));
+    expect(find.text('胎贈數量提高'), findsOneWidget);
+    await tester.tap(find.text('胎贈數量提高'));
     await tester.pumpAndSettle();
 
     // 繁中客户端文本（poe2db）：胎贈数量（简体为孕育赠礼）
-    expect(find.textContaining('胎贈'), findsOneWidget);
+    expect(find.textContaining('胎贈'), findsWidgets);
   });
 
   testWidgets('地图词缀：切换繁体后输出繁中文本', (WidgetTester tester) async {

@@ -536,6 +536,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                 _ItemTile(
                   item: item,
                   selected: set.contains(item.id),
+                  showTc: _isTc,
                   minController: _minControllerOf(item.id),
                   maxController: _maxControllerOf(item.id),
                   onToggle: (_) => _toggle(controller, item),
@@ -800,7 +801,8 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                         for (final t in [...kPoe2Tablet, ..._customOf('tablet')])
                           ChoiceChip(
                             label: Text(
-                              t.label.replaceAll('先驱石板', ''),
+                              t.displayName(isTc: _isTc)
+                                  .replaceAll(_isTc ? '碑牌' : '先驱石板', ''),
                               style: const TextStyle(fontSize: 12),
                             ),
                             selected: _tabletType == t.id,
@@ -840,6 +842,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   _ItemTile(
                     item: item,
                     selected: set.contains(item.id),
+                    showTc: _isTc,
                     minController: _minControllerOf(item.id),
                     maxController: _maxControllerOf(item.id),
                     onToggle: (_) => _toggle(controller, item),
@@ -1001,6 +1004,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
 class _ItemTile extends StatelessWidget {
   final Poe2RegexItem item;
   final bool selected;
+  final bool showTc;
   final TextEditingController minController;
   final TextEditingController maxController;
   final ValueChanged<bool> onToggle;
@@ -1009,6 +1013,7 @@ class _ItemTile extends StatelessWidget {
   const _ItemTile({
     required this.item,
     required this.selected,
+    this.showTc = false,
     required this.minController,
     required this.maxController,
     required this.onToggle,
@@ -1028,7 +1033,8 @@ class _ItemTile extends StatelessWidget {
       children: [
         CheckboxListTile(
           dense: true,
-          title: Text(item.label, style: const TextStyle(fontSize: 14)),
+          title: Text(item.displayName(isTc: showTc),
+              style: const TextStyle(fontSize: 14)),
           subtitle: item.cn.isNotEmpty
               ? Text(
                   item.cn,

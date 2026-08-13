@@ -35,6 +35,7 @@ class _Poe2RegexManageScreenState extends State<Poe2RegexManageScreen> {
         _items.add(Poe2RegexItem(
           id: id,
           label: result.label,
+          labelTc: result.labelTc,
           cn: result.cn,
           tc: result.tc,
           group: result.group,
@@ -54,6 +55,7 @@ class _Poe2RegexManageScreenState extends State<Poe2RegexManageScreen> {
           _items[index] = Poe2RegexItem(
             id: item.id,
             label: result.label,
+            labelTc: result.labelTc,
             cn: result.cn,
             tc: result.tc,
             group: result.group,
@@ -91,6 +93,7 @@ class _Poe2RegexManageScreenState extends State<Poe2RegexManageScreen> {
 
   Future<_EditorResult?> _showEditor(Poe2RegexItem? item) async {
     final labelController = TextEditingController(text: item?.label ?? '');
+    final labelTcController = TextEditingController(text: item?.labelTc ?? '');
     final cnController = TextEditingController(text: item?.cn ?? '');
     final tcController = TextEditingController(text: item?.tc ?? '');
     String category = item?.category ?? 'maps';
@@ -142,6 +145,15 @@ class _Poe2RegexManageScreenState extends State<Poe2RegexManageScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextField(
+                  controller: labelTcController,
+                  decoration: const InputDecoration(
+                    labelText: '繁体名称（可选）',
+                    hintText: '不填则繁体时沿用简体名称',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
                   controller: cnController,
                   maxLines: 2,
                   style: const TextStyle(fontFamily: 'monospace'),
@@ -183,6 +195,7 @@ class _Poe2RegexManageScreenState extends State<Poe2RegexManageScreen> {
                   context,
                   _EditorResult(
                     label: labelController.text.trim(),
+                    labelTc: labelTcController.text.trim(),
                     cn: cnController.text.trim(),
                     tc: tcController.text.trim(),
                     category: category,
@@ -296,6 +309,7 @@ class _Poe2RegexManageScreenState extends State<Poe2RegexManageScreen> {
 
 class _EditorResult {
   final String label;
+  final String labelTc;
   final String cn;
   final String tc;
   final String category;
@@ -303,6 +317,7 @@ class _EditorResult {
 
   const _EditorResult({
     required this.label,
+    required this.labelTc,
     required this.cn,
     required this.tc,
     required this.category,
