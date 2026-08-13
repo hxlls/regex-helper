@@ -613,6 +613,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   decoration: const InputDecoration(
                     isDense: true,
                     hintText: '1',
+                    hintStyle: TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -633,6 +634,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   decoration: const InputDecoration(
                     isDense: true,
                     hintText: '16',
+                    hintStyle: TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -713,6 +715,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                           decoration: const InputDecoration(
                             isDense: true,
                             hintText: '0',
+                            hintStyle: TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -749,6 +752,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   decoration: const InputDecoration(
                     isDense: true,
                     hintText: '0',
+                    hintStyle: TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -769,6 +773,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   decoration: const InputDecoration(
                     isDense: true,
                     hintText: '999',
+                    hintStyle: TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -1095,6 +1100,7 @@ class _ItemTile extends StatelessWidget {
                     decoration: const InputDecoration(
                       isDense: true,
                       hintText: '0',
+                      hintStyle: TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -1115,6 +1121,7 @@ class _ItemTile extends StatelessWidget {
                     decoration: const InputDecoration(
                       isDense: true,
                       hintText: '999',
+                      hintStyle: TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
                       border: OutlineInputBorder(),
                     ),
                   ),
