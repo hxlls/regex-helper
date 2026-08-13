@@ -944,7 +944,14 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                 children: [
                   const Text('输出',
                       style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 12),
+                  if (output.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text('${output.length} 字符',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey.shade600)),
+                    ),
+                  const Spacer(),
                   SegmentedButton<int>(
                     style: const ButtonStyle(
                         visualDensity: VisualDensity.compact),
@@ -957,11 +964,6 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                     onSelectionChanged: (s) =>
                         setState(() => _mode = s.first),
                   ),
-                  const Spacer(),
-                  if (output.isNotEmpty)
-                    Text('${output.length} 字符',
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade600)),
                 ],
               ),
               const SizedBox(height: 6),
