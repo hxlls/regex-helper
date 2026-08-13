@@ -191,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Text('· AI 生成（可选）：接入任意 OpenAI 兼容接口'),
             const SizedBox(height: 12),
             Text(
-              '数据参考 poe2db.tw 与 cnpoe.com 正则工坊。',
+              '词条数据参考 poe2db.tw（简/繁/英三语对照）。',
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
           ],

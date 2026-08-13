@@ -1,4 +1,4 @@
-// 数据参考自 cnpoe.com/poe2/regex 正则工坊，并对照 poe2db.tw 校正分类。
+// 数据以 poe2db.tw 为准（简/繁/英三语对照），机制词条参考其先驱高塔 Mods 数据。
 class Poe2RegexItem {
   final String id;
   final String label;
@@ -112,7 +112,7 @@ const List<Poe2RegexItem> kPoe2MapAffixes = [
 ];
 
 /// 石板类型 → 机制词条。词条只会在对应先驱石板作用于地图后出现。
-/// 数据参考 cnpoe.com/poe2/regex 正则工坊（E 对象），已补全霸主石板词条。
+/// 数据参考 poe2db.tw「先驱高塔 Mods」简/繁/英三语对照。
 const Map<String, List<Poe2RegexItem>> kPoe2TabletMods = {
   'precursor': [
     Poe2RegexItem(id: 'ps_item_rarity', label: '物品稀有度提高', labelTc: '物品稀有度提高', en: 'X% increased Rarity of Items found in Map', cn: '地图内获取物品的稀有度提高 (?:[0-9]+-[0-9]+|[0-9]+)%', tc: '增加(?:[0-9]+-[0-9]+|[0-9]+)%地圖內找到的物品稀有度', enRegex: '(?:[0-9]+-[0-9]+|[0-9]+)% increased Rarity of Items found in Map', group: '能量辐照', category: ''),
