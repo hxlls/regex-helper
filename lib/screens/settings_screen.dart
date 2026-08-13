@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../services/settings_service.dart';
 
@@ -19,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _model;
   late bool _autoTest;
   bool _saving = false;
+  String _version = '';
 
   @override
   void initState() {
@@ -28,6 +30,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _apiKey = TextEditingController(text: widget.settings.apiKey);
     _model = TextEditingController(text: widget.settings.model);
     _autoTest = widget.settings.autoTest;
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() => _version = '${info.version} (${info.buildNumber})');
+      }
+    } catch (_) {
+      // 无法获取版本时保持空白
+    }
   }
 
   @override
@@ -135,6 +149,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(fontSize: 13, color: Colors.amber.shade900),
               ),
             ),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('关于正则助手'),
+            subtitle: Text(_version.isEmpty ? '版本信息加载中…' : '版本 $_version'),
+            onTap: () => _showAbout(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAbout(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('正则助手'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _version.isEmpty ? '' : '版本 $_version',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            const Text('用中文自然语言生成正则表达式，支持 Windows 和安卓。'),
+            const SizedBox(height: 8),
+            const Text('· 本地规则引擎：离线可用，匹配手机号、邮箱、身份证、IP、日期等 20+ 类型'),
+            const SizedBox(height: 4),
+            const Text('· 正则测试器：输入文本实时高亮匹配结果'),
+            const SizedBox(height: 4),
+            const Text('· 常用模板库：60+ 常用正则，含流放之路2（POE2）简繁模板'),
+            const SizedBox(height: 4),
+            const Text('· POE2 正则构建器：按词缀/石板/装备类别生成过滤正则'),
+            const SizedBox(height: 4),
+            const Text('· AI 生成（可选）：接入任意 OpenAI 兼容接口'),
+            const SizedBox(height: 12),
+            Text(
+              '数据参考 poe2db.tw 与 cnpoe.com 正则工坊。',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭'),
           ),
         ],
       ),
