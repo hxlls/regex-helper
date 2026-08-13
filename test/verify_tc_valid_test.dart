@@ -58,6 +58,23 @@ void main() {
     }
   });
 
+  test('石板机制词条均有英文名称与英文正则', () {
+    var total = 0;
+    for (final mods in kPoe2TabletMods.values) {
+      for (final e in mods) {
+        total++;
+        expect(e.en, isNotNull, reason: '${e.label} 缺英文名');
+        expect(e.en!.isNotEmpty, isTrue, reason: '${e.label} 英文名为空');
+        expect(e.enRegex, isNotNull, reason: '${e.label} 缺英文正则');
+        expect(e.enRegex!.isNotEmpty, isTrue, reason: '${e.label} 英文正则为空');
+        RegExp(e.enRegex!);
+      }
+    }
+    expect(total, greaterThan(200));
+    // ignore: avoid_print
+    print('石板机制词条 $total 条，全部有英文名称与正则');
+  });
+
   test('无数值词条（如冰缓地面）无数字占位符，简繁均不含', () {
     final fire = kPoe2MapAffixes.firstWhere((e) => e.id == 'ws_ignite_gnd');
     expect(fire.cn, contains('点燃地面'));

@@ -34,7 +34,9 @@ class Poe2RegexBuilderScreen extends StatefulWidget {
 }
 
 class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
-  bool _isTc = false;
+  String _lang = 'cn'; // cn 简体 / tc 繁体 / en 英文
+  bool get _isTc => _lang == 'tc';
+  bool get _isEn => _lang == 'en';
   String _search = '';
   String _affixFilter = '全部';
   final Set<String> _selected = {};
@@ -137,12 +139,14 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     return _customItems.where((e) => e.category == category).toList();
   }
 
-  /// 搜索词是否匹配词条（同时匹配简体/繁体的名称与正则）。
+  /// 搜索词是否匹配词条（同时匹配简/繁/英的名称与正则）。
   bool _matches(Poe2RegexItem e, String q) {
     if (e.label.contains(q)) return true;
     if (e.labelTc?.contains(q) ?? false) return true;
+    if (e.en?.contains(q) ?? false) return true;
     if (e.cn.contains(q)) return true;
     if (e.tc?.contains(q) ?? false) return true;
+    if (e.enRegex?.contains(q) ?? false) return true;
     return false;
   }
 
@@ -207,12 +211,25 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   }
 
   String _patternOf(Poe2RegexItem item, int tabIndex) {
-    // 装备词缀(2)、地图词缀(0)、石板机制(1) 均有繁体正则可切换
+    // 英文模式：用英文正则（无则回退简体）
+    if (_isEn) {
+      final er = item.enRegex;
+      if (er != null && er.isNotEmpty) return er;
+      return item.cn;
+    }
+    // 繁体模式：用繁体正则（无则回退简体）
     if (_isTc) {
       final tc = item.tc;
       if (tc != null && tc.isNotEmpty) return tc;
     }
     return item.cn;
+  }
+
+  /// 石板类型 chip 显示名：英文用英文名（去 Tablet），繁体去掉「碑牌」，简体去掉「先驱石板」。
+  String _tabletChipName(Poe2RegexItem t) {
+    if (_isEn) return (t.en ?? t.label).replaceAll(' Tablet', '');
+    return t.displayName(isTc: _isTc, isEn: false)
+        .replaceAll(_isTc ? '碑牌' : '先驱石板', '');
   }
 
   static String _applyRange(String pattern, String minText, String maxText) {
@@ -484,14 +501,15 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    SegmentedButton<bool>(
+                    SegmentedButton<String>(
                       segments: const [
-                        ButtonSegment(value: false, label: Text('简')),
-                        ButtonSegment(value: true, label: Text('繁')),
+                        ButtonSegment(value: 'cn', label: Text('简')),
+                        ButtonSegment(value: 'tc', label: Text('繁')),
+                        ButtonSegment(value: 'en', label: Text('英')),
                       ],
-                      selected: {_isTc},
+                      selected: {_lang},
                       onSelectionChanged: (s) =>
-                          setState(() => _isTc = s.first),
+                          setState(() => _lang = s.first),
                     ),
                   ],
                 ),
@@ -545,7 +563,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                 _ItemTile(
                   item: item,
                   selected: set.contains(item.id),
-                  showTc: _isTc,
+                  lang: _lang,
                   minController: _minControllerOf(item.id),
                   maxController: _maxControllerOf(item.id),
                   onToggle: (_) => _toggle(controller, item),
@@ -810,8 +828,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                         for (final t in [...kPoe2Tablet, ..._customOf('tablet')])
                           ChoiceChip(
                             label: Text(
-                              t.displayName(isTc: _isTc)
-                                  .replaceAll(_isTc ? '碑牌' : '先驱石板', ''),
+                              _tabletChipName(t),
                               style: const TextStyle(fontSize: 12),
                             ),
                             selected: _tabletType == t.id,
@@ -851,7 +868,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   _ItemTile(
                     item: item,
                     selected: set.contains(item.id),
-                    showTc: _isTc,
+                    lang: _lang,
                     minController: _minControllerOf(item.id),
                     maxController: _maxControllerOf(item.id),
                     onToggle: (_) => _toggle(controller, item),
@@ -1013,7 +1030,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
 class _ItemTile extends StatelessWidget {
   final Poe2RegexItem item;
   final bool selected;
-  final bool showTc;
+  final String lang;
   final TextEditingController minController;
   final TextEditingController maxController;
   final ValueChanged<bool> onToggle;
@@ -1022,7 +1039,7 @@ class _ItemTile extends StatelessWidget {
   const _ItemTile({
     required this.item,
     required this.selected,
-    this.showTc = false,
+    this.lang = 'cn',
     required this.minController,
     required this.maxController,
     required this.onToggle,
@@ -1042,8 +1059,10 @@ class _ItemTile extends StatelessWidget {
       children: [
         CheckboxListTile(
           dense: true,
-          title: Text(item.displayName(isTc: showTc),
-              style: const TextStyle(fontSize: 14)),
+          title: Text(
+            item.displayName(isTc: lang == 'tc', isEn: lang == 'en'),
+            style: const TextStyle(fontSize: 14),
+          ),
           subtitle: item.cn.isNotEmpty
               ? Text(
                   item.cn,

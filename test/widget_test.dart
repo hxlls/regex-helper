@@ -107,4 +107,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('引路石数量提高'), findsWidgets);
   });
+
+  testWidgets('英文模式：词条显示英文名并输出英文正则', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MaterialApp(home: Poe2RegexBuilderScreen()));
+
+    await tester.tap(find.text('石板'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('英'));
+    await tester.pumpAndSettle();
+
+    // 英文模式下石板类型显示英文名（Breach Tablet）
+    expect(find.text('Breach'), findsOneWidget);
+
+    await tester.tap(find.text('Breach'));
+    await tester.pumpAndSettle();
+
+    // 滚动到 Wombgifts（孕育赠礼英文名）
+    final listFinder = find.byType(ListView).last;
+    for (var i = 0;
+        i < 8 && find.textContaining('Wombgifts').evaluate().isEmpty;
+        i++) {
+      await tester.drag(listFinder, const Offset(0, -400));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.textContaining('Wombgifts').first);
+    await tester.pumpAndSettle();
+
+    // 英文正则输出
+    expect(find.textContaining('Wombgifts found in Map'), findsWidgets);
+  });
 }
