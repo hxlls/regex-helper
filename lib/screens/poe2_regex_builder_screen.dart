@@ -38,7 +38,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   String _search = '';
   String _affixFilter = '全部';
   final Set<String> _selected = {};
-  final Set<String> _mechSelected = {};
+  String? _tabletType;
   final Set<String> _tabletSelected = {};
   final Set<String> _itemModSelected = {};
   final Set<String> _classSelected = {};
@@ -108,12 +108,10 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
       case 0:
         return _selected;
       case 1:
-        return _mechSelected;
-      case 2:
         return _tabletSelected;
-      case 3:
+      case 2:
         return _itemModSelected;
-      case 4:
+      case 3:
         return _classSelected;
       default:
         return {};
@@ -125,12 +123,10 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
       case 0:
         return _filteredMapAffixes;
       case 1:
-        return _filteredMechanicMods;
+        return _tabletMods;
       case 2:
-        return [...kPoe2Tablet, ..._customOf('tablet')];
-      case 3:
         return _filteredItemMods;
-      case 4:
+      case 3:
         return [...kPoe2ItemClasses, ..._customOf('classes')];
       default:
         return const [];
@@ -172,20 +168,38 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     return list;
   }
 
-  List<Poe2RegexItem> get _filteredMechanicMods {
-    final all = <Poe2RegexItem>[
-      ...kPoe2MechanicMods,
-      ..._customOf('mechanics'),
-    ];
-    if (_search.isEmpty) return all;
-    return all
-        .where((e) => e.label.contains(_search) || e.cn.contains(_search))
-        .toList();
+  /// 当前选中石板类型的机制词条（内置 + 自定义）。
+  List<Poe2RegexItem> get _tabletMods {
+    final type = _tabletType;
+    if (type == null) return const [];
+    final builtin = kPoe2TabletMods[type] ?? const <Poe2RegexItem>[];
+    final group = _tabletGroupOf(type);
+    final custom = group == null
+        ? const <Poe2RegexItem>[]
+        : _customOf('mechanics')
+            .where((e) => e.group == group)
+            .toList();
+    return [...builtin, ...custom];
+  }
+
+  /// 石板类型 → 机制词条分组名（用于关联自定义词条）。
+  static String? _tabletGroupOf(String tabletTypeId) {
+    const map = {
+      'precursor': '能量辐照',
+      'breach': '裂隙',
+      'expedition': '先祖秘藏',
+      'delirium': '惊悸迷雾',
+      'ritual': '驱灵仪式',
+      'domination': '霸主',
+      'abyss': '深渊',
+      'temple': '瓦尔灯塔',
+    };
+    return map[tabletTypeId];
   }
 
   String _patternOf(Poe2RegexItem item, int tabIndex) {
-    // 装备词缀(3) 有繁体正则可切换
-    if (tabIndex == 3) {
+    // 装备词缀(2) 有繁体正则可切换
+    if (tabIndex == 2) {
       return _isTc ? (item.tc?.isNotEmpty == true ? item.tc! : item.cn) : item.cn;
     }
     return item.cn;
@@ -273,8 +287,8 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
             final range = NumberRangeRegex.gte(num);
             final label = _isTc ? ws.tc : ws.cn;
             result.add(ws.isPercent
-                ? '$label:.*\\\\+$range%'
-                : '$label:.*\\\\+$range');
+                ? '$label:.*\\+?$range%'
+                : '$label:.*\\+?$range');
           }
         }
       }
@@ -290,7 +304,18 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
           result.add('稀有度: (${s.join('|')})');
         }
       }
-    } else if (tab == 2) {
+    } else if (tab == 1) {
+      // 选中石板类型本身：匹配石板名称（如 裂隙先驱石板）
+      final type = _tabletType;
+      if (type != null) {
+        for (final t in [...kPoe2Tablet, ..._customOf('tablet')]) {
+          if (t.id == type) {
+            final p = _isTc && t.tc?.isNotEmpty == true ? t.tc! : t.cn;
+            if (p.isNotEmpty) result.add(p);
+            break;
+          }
+        }
+      }
       // 石板使用次数
       final uMin = _tabletUseMin.text.trim();
       final uMax = _tabletUseMax.text.trim();
@@ -310,9 +335,9 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
       // 石板稀有度
       if (_tabletRarities.isNotEmpty && _tabletRarities.length < 3) {
         final map = {
-          'rare': _isTc ? '稀有' : '稀有',
-          'magic': _isTc ? '魔法' : '魔法',
-          'normal': _isTc ? '中' : '普通',
+          'rare': '稀有',
+          'magic': '魔法',
+          'normal': '普通',
         };
         final s = _tabletRarities.map((e) => map[e] ?? '').where((e) => e.isNotEmpty).toList();
         if (s.isNotEmpty) {
@@ -323,7 +348,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     return result;
   }
 
-  bool get tabIndexCustom => _tabController?.index == 5;
+  bool get tabIndexCustom => _tabController?.index == 4;
   int get _currentTab => _tabController?.index ?? 0;
   TabController? _tabController;
 
@@ -400,7 +425,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 6,
+      length: 5,
       child: Builder(builder: (context) {
         final controller = DefaultTabController.of(context);
         _tabController = controller;
@@ -426,7 +451,6 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
               tabAlignment: TabAlignment.start,
               tabs: const [
                 Tab(text: '地图词缀'),
-                Tab(text: '地图机制'),
                 Tab(text: '石板'),
                 Tab(text: '装备词缀'),
                 Tab(text: '装备类别'),
@@ -464,7 +488,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   ],
                 ),
               ),
-              if (controller.index == 3)
+              if (controller.index == 2)
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 8),
@@ -484,10 +508,9 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                 child: TabBarView(
                   children: [
                     _buildList(controller, 0),
-                    _buildGroupedList(controller),
+                    _buildTabletTab(controller),
                     _buildList(controller, 2),
                     _buildList(controller, 3),
-                    _buildList(controller, 4),
                     _buildCustom(controller),
                   ],
                 ),
@@ -510,15 +533,13 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
           child: ListView(
             children: [
               if (tabIndex == 0) _buildMapParams(),
-              if (tabIndex == 2) _buildTabletParams(),
               for (final item in items)
                 _ItemTile(
                   item: item,
                   selected: set.contains(item.id),
                   minController: _minControllerOf(item.id),
                   maxController: _maxControllerOf(item.id),
-                  showValueInput:
-                      tabIndex == 0 || tabIndex == 1 || tabIndex == 3,
+                  showValueInput: tabIndex == 0 || tabIndex == 2,
                   onToggle: (_) => _toggle(controller, item),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -758,42 +779,75 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     );
   }
 
-  Widget _buildGroupedList(TabController controller) {
-    final items = _filteredMechanicMods;
-    final set = _setFor(1);
-    final groups = <String>[];
-    for (final e in items) {
-      if (!groups.contains(e.group)) groups.add(e.group);
-    }
+  /// 石板标签页：先选石板类型，再选该类型的机制词条（与 cnpoe 一致）。
+  Widget _buildTabletTab(TabController controller) {
+    final set = _tabletSelected;
+    final items = _tabletMods;
     return Column(
       children: [
         _buildToolbar(controller, set, 1),
         Expanded(
           child: ListView(
             children: [
-              for (final g in groups) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _paramHeader('石板类型'),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        for (final t in [...kPoe2Tablet, ..._customOf('tablet')])
+                          ChoiceChip(
+                            label: Text(
+                              t.label.replaceAll('先驱石板', ''),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            selected: _tabletType == t.id,
+                            onSelected: (_) => setState(() {
+                              _tabletType = _tabletType == t.id ? null : t.id;
+                              _tabletSelected.clear();
+                            }),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              _buildTabletParams(),
+              if (_tabletType == null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-                  child: Text(
-                    g,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: Text(
+                      '请先选择石板类型',
+                      style: TextStyle(color: Colors.grey.shade500),
                     ),
                   ),
                 ),
-                for (final item in items.where((e) => e.group == g))
+              if (_tabletType != null && items.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: Text(
+                      '该石板类型暂无词条',
+                      style: TextStyle(color: Colors.grey.shade500),
+                    ),
+                  ),
+                ),
+              if (_tabletType != null)
+                for (final item in items)
                   _ItemTile(
                     item: item,
                     selected: set.contains(item.id),
                     minController: _minControllerOf(item.id),
                     maxController: _maxControllerOf(item.id),
-                    showValueInput: true,
+                    showValueInput: false,
                     onToggle: (_) => _toggle(controller, item),
                     onChanged: (_) => setState(() {}),
                   ),
-              ],
               const SizedBox(height: 80),
             ],
           ),

@@ -46,4 +46,26 @@ void main() {
     expect(restored.cn, item.cn);
     expect(restored.tc, isNull);
   });
+
+  test('石板类型均有关联机制词条，且词条正则非空、id 唯一', () {
+    expect(kPoe2Tablet, isNotEmpty);
+    final allIds = <String>{};
+    for (final tablet in kPoe2Tablet) {
+      final mods = kPoe2TabletMods[tablet.id];
+      expect(mods, isNotNull,
+          reason: '石板类型 ${tablet.label} 缺少机制词条');
+      expect(mods, isNotEmpty,
+          reason: '石板类型 ${tablet.label} 机制词条为空');
+      for (final m in mods!) {
+        expect(m.cn, isNotEmpty, reason: '${m.label} 缺少简体正则');
+        expect(allIds.add(m.id), isTrue, reason: '词条 id 重复：${m.id}');
+      }
+    }
+  });
+
+  test('机制词条覆盖全部石板类型且总量充足', () {
+    expect(kPoe2TabletMods.keys.toSet(), containsAll(kPoe2Tablet.map((t) => t.id)));
+    final total = kPoe2TabletMods.values.fold<int>(0, (a, b) => a + b.length);
+    expect(total, greaterThan(100));
+  });
 }

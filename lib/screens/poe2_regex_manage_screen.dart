@@ -235,7 +235,8 @@ class _Poe2RegexManageScreenState extends State<Poe2RegexManageScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
-                    '游戏版本更新后，可在这里新增/修改/删除词条，构建器会自动生效。',
+                    '游戏版本更新后，可在这里新增/修改/删除词条，构建器会自动生效。'
+                    '\n「地图机制」词条会出现在对应石板类型下。',
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                   ),
                 ),
