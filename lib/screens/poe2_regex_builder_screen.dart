@@ -330,12 +330,16 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
         }
       }
     } else if (tab == 1) {
-      // 选中石板类型本身：匹配石板名称（如 裂隙先驱石板）
+      // 选中石板类型本身：匹配石板名称（如 裂隙先驱石板 / Breach Tablet）
       final type = _tabletType;
       if (type != null) {
         for (final t in [...kPoe2Tablet, ..._customOf('tablet')]) {
           if (t.id == type) {
-            final p = _isTc && t.tc?.isNotEmpty == true ? t.tc! : t.cn;
+            final p = _isEn
+                ? (t.en ?? t.label)
+                : _isTc && t.tc?.isNotEmpty == true
+                    ? t.tc!
+                    : t.cn;
             if (p.isNotEmpty) result.add(p);
             break;
           }
@@ -944,21 +948,22 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                 children: [
                   const Text('输出',
                       style: TextStyle(fontWeight: FontWeight.bold)),
-                  if (output.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text('${output.length} 字符',
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade600)),
-                    ),
-                  const Spacer(),
+                  const SizedBox(width: 10),
                   SegmentedButton<int>(
                     style: const ButtonStyle(
-                        visualDensity: VisualDensity.compact),
+                      visualDensity: VisualDensity.compact,
+                      textStyle: WidgetStatePropertyAll(
+                        TextStyle(fontSize: 12),
+                      ),
+                      padding: WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     segments: const [
-                      ButtonSegment(value: 0, label: Text('任一(或)')),
-                      ButtonSegment(value: 1, label: Text('全部(且)')),
-                      ButtonSegment(value: 2, label: Text('隐藏(不含)')),
+                      ButtonSegment(value: 0, label: Text('任一')),
+                      ButtonSegment(value: 1, label: Text('全部')),
+                      ButtonSegment(value: 2, label: Text('隐藏')),
                     ],
                     selected: {_mode},
                     onSelectionChanged: (s) =>
@@ -1024,6 +1029,16 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                     label: const Text('存模板'),
                     onPressed: output.isEmpty ? null : _saveToTemplate,
                   ),
+                  if (output.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('${output.length} 字符',
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.grey.shade600)),
+                      ),
+                    ),
                 ],
               ),
             ],

@@ -156,15 +156,20 @@ void main() {
     await tester.tap(find.text('Breach'));
     await tester.pumpAndSettle();
 
-    // 滚动到 Wombgifts（孕育赠礼英文名）
+    // 滚动到 Wombgifts（孕育赠礼英文名，选 Quantity 那条而非 tier）
     final listFinder = find.byType(ListView).last;
     for (var i = 0;
-        i < 8 && find.textContaining('Wombgifts').evaluate().isEmpty;
+        i < 8 &&
+            find.textContaining('Quantity of Wombgifts').evaluate().isEmpty;
         i++) {
       await tester.drag(listFinder, const Offset(0, -400));
       await tester.pumpAndSettle();
     }
-    await tester.tap(find.textContaining('Wombgifts').first);
+    final tile = find.ancestor(
+      of: find.textContaining('Quantity of Wombgifts').first,
+      matching: find.byType(CheckboxListTile),
+    );
+    await tester.tap(tile.first);
     await tester.pumpAndSettle();
 
     // 英文正则输出
