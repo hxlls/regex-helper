@@ -209,7 +209,9 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
   static String _applyRange(String pattern, String minText, String maxText) {
     final minStr = minText.trim();
     final maxStr = maxText.trim();
-    if (minStr.isEmpty && maxStr.isEmpty) return pattern;
+    // 模式中没有数字占位符的词条（如冰缓地面）不支持填数值
+    final hasPlaceholder = pattern.contains('[0-9.]+') || pattern.contains('[0-9]+');
+    if (!hasPlaceholder || (minStr.isEmpty && maxStr.isEmpty)) return pattern;
     int? min = int.tryParse(minStr);
     int? max = int.tryParse(maxStr);
     if (min != null && max != null && min > max) {
@@ -226,11 +228,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
       numPattern = NumberRangeRegex.lte(max!);
     }
     // 用生成的数值正则替换模式中的数字占位符 [0-9.]+ 或 [0-9]+
-    final replaced =
-        pattern.replaceAll(RegExp(r'\[0-9\.\]\+|\[0-9\]\+'), numPattern);
-    if (replaced != pattern) return replaced;
-    // 模式中没有数字占位符时，把数值正则追加在末尾（带上 %）
-    return '$pattern.*$numPattern%';
+    return pattern.replaceAll(RegExp(r'\[0-9\.\]\+|\[0-9\]\+'), numPattern);
   }
 
   String get _output {
@@ -540,7 +538,6 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                   selected: set.contains(item.id),
                   minController: _minControllerOf(item.id),
                   maxController: _maxControllerOf(item.id),
-                  showValueInput: tabIndex == 0 || tabIndex == 2,
                   onToggle: (_) => _toggle(controller, item),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -845,7 +842,6 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                     selected: set.contains(item.id),
                     minController: _minControllerOf(item.id),
                     maxController: _maxControllerOf(item.id),
-                    showValueInput: false,
                     onToggle: (_) => _toggle(controller, item),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -1007,7 +1003,6 @@ class _ItemTile extends StatelessWidget {
   final bool selected;
   final TextEditingController minController;
   final TextEditingController maxController;
-  final bool showValueInput;
   final ValueChanged<bool> onToggle;
   final ValueChanged<String> onChanged;
 
@@ -1016,10 +1011,15 @@ class _ItemTile extends StatelessWidget {
     required this.selected,
     required this.minController,
     required this.maxController,
-    required this.showValueInput,
     required this.onToggle,
     required this.onChanged,
   });
+
+  /// 词条正则是否含数字占位符（[0-9]+ / [0-9.]+），决定是否显示数值输入。
+  bool get _hasNumeric =>
+      (item.cn.contains('[0-9]+') || item.cn.contains('[0-9.]+')) ||
+      (item.tc?.contains('[0-9]+') ?? false) ||
+      (item.tc?.contains('[0-9.]+') ?? false);
 
   @override
   Widget build(BuildContext context) {
@@ -1041,7 +1041,7 @@ class _ItemTile extends StatelessWidget {
           value: selected,
           onChanged: (v) => onToggle(v ?? false),
         ),
-        if (selected && showValueInput)
+        if (selected && _hasNumeric)
           Padding(
             padding: const EdgeInsets.only(left: 52, right: 16, bottom: 8),
             child: Row(
@@ -1102,7 +1102,7 @@ class _ItemTile extends StatelessWidget {
   }
 
   String get _hint {
-    if (item.cn.contains('[0-9.]+') || item.cn.contains('[0-9]+')) {
+    if (_hasNumeric) {
       return '填数值替换模式中的数字';
     }
     return '该词条无数字占位符';

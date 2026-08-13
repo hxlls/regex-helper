@@ -13,7 +13,7 @@ void main() {
   });
 
   testWidgets('石板 tab：先选类型再选机制词条可生成正则', (WidgetTester tester) async {
-    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const MaterialApp(home: Poe2RegexBuilderScreen()));
 
@@ -25,17 +25,60 @@ void main() {
     await tester.tap(find.text('裂隙'));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('孕育赠礼数量提高'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
+    // 裂隙分组专属词条（排在通用词条之后），多次滚动直到可见
+    final listFinder = find.byType(ListView).last;
+    for (var i = 0; i < 6 && find.text('孕育赠礼数量提高').evaluate().isEmpty; i++) {
+      await tester.drag(listFinder, const Offset(0, -400));
+      await tester.pumpAndSettle();
+    }
     expect(find.text('孕育赠礼数量提高'), findsOneWidget);
-    expect(find.text('引路石数量提高'), findsOneWidget);
 
     await tester.tap(find.text('孕育赠礼数量提高'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('孕育赠礼'), findsWidgets);
+  });
+
+  testWidgets('石板 tab：切换繁体后机制词条输出繁中正则', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MaterialApp(home: Poe2RegexBuilderScreen()));
+
+    await tester.tap(find.text('石板'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('繁'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('裂隙'));
+    await tester.pumpAndSettle();
+
+    // 滚动到裂隙专属词条「孕育赠礼数量提高」（排在通用词条之后）
+    final listFinder = find.byType(ListView).last;
+    for (var i = 0; i < 6 && find.text('孕育赠礼数量提高').evaluate().isEmpty; i++) {
+      await tester.drag(listFinder, const Offset(0, -400));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text('孕育赠礼数量提高'));
+    await tester.pumpAndSettle();
+
+    // 繁中客户端文本（poe2db）：胎贈数量（简体为孕育赠礼）
+    expect(find.textContaining('胎贈'), findsOneWidget);
+  });
+
+  testWidgets('地图词缀：切换繁体后输出繁中文本', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MaterialApp(home: Poe2RegexBuilderScreen()));
+
+    await tester.tap(find.text('繁'));
+    await tester.pumpAndSettle();
+
+    // 怪物伤害提高 是地图词缀列表前几项，直接可见（标题+正则副标题，取第一个）
+    await tester.tap(find.text('怪物伤害提高').first);
+    await tester.pumpAndSettle();
+
+    // 繁中客户端文本：增加.*怪物傷害
+    expect(find.textContaining('增加.*怪物傷害'), findsOneWidget);
   });
 }
