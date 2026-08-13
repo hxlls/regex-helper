@@ -667,7 +667,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
             children: [
               for (final ws in _kWaystoneStats)
                 SizedBox(
-                  width: 110,
+                  width: 120,
                   child: Row(
                     children: [
                       Expanded(
@@ -677,7 +677,7 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
                       ),
                       const SizedBox(width: 4),
                       SizedBox(
-                        width: 44,
+                        width: 56,
                         child: TextField(
                           controller: _wsControllerOf(ws.id),
                           keyboardType: TextInputType.number,
