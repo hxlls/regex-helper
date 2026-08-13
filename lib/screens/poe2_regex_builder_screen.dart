@@ -137,15 +137,22 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
     return _customItems.where((e) => e.category == category).toList();
   }
 
+  /// 搜索词是否匹配词条（同时匹配简体/繁体的名称与正则）。
+  bool _matches(Poe2RegexItem e, String q) {
+    if (e.label.contains(q)) return true;
+    if (e.labelTc?.contains(q) ?? false) return true;
+    if (e.cn.contains(q)) return true;
+    if (e.tc?.contains(q) ?? false) return true;
+    return false;
+  }
+
   List<Poe2RegexItem> get _filteredMapAffixes {
     var list = <Poe2RegexItem>[
       ...kPoe2MapAffixes,
       ..._customOf('maps'),
     ];
     if (_search.isNotEmpty) {
-      list = list
-          .where((e) => e.label.contains(_search) || e.cn.contains(_search))
-          .toList();
+      list = list.where((e) => _matches(e, _search)).toList();
     }
     return list;
   }
@@ -161,14 +168,12 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
       list = list.where((e) => e.group == '后缀').toList();
     }
     if (_search.isNotEmpty) {
-      list = list
-          .where((e) => e.label.contains(_search) || e.cn.contains(_search))
-          .toList();
+      list = list.where((e) => _matches(e, _search)).toList();
     }
     return list;
   }
 
-  /// 当前选中石板类型的机制词条（内置 + 自定义）。
+  /// 当前选中石板类型的机制词条（内置 + 自定义），支持简繁搜索。
   List<Poe2RegexItem> get _tabletMods {
     final type = _tabletType;
     if (type == null) return const [];
@@ -179,7 +184,11 @@ class _Poe2RegexBuilderScreenState extends State<Poe2RegexBuilderScreen> {
         : _customOf('mechanics')
             .where((e) => e.group == group)
             .toList();
-    return [...builtin, ...custom];
+    var all = [...builtin, ...custom];
+    if (_search.isNotEmpty) {
+      all = all.where((e) => _matches(e, _search)).toList();
+    }
+    return all;
   }
 
   /// 石板类型 → 机制词条分组名（用于关联自定义词条）。

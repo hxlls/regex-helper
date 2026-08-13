@@ -85,4 +85,26 @@ void main() {
     // 繁中客户端文本：增加.*怪物傷害
     expect(find.textContaining('增加.*怪物傷害'), findsOneWidget);
   });
+
+  testWidgets('搜索：输入繁体也能搜到简体词条', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MaterialApp(home: Poe2RegexBuilderScreen()));
+
+    // 进入石板 tab 并选择裂隙类型
+    await tester.tap(find.text('石板'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('裂隙'));
+    await tester.pumpAndSettle();
+
+    // 输入繁体「換界石」应能搜出「引路石数量提高」（简体词条）
+    await tester.enterText(find.byType(TextField).first, '換界石');
+    await tester.pumpAndSettle();
+    expect(find.text('引路石数量提高'), findsWidgets);
+
+    // 输入简体「引路石」也应能搜出
+    await tester.enterText(find.byType(TextField).first, '引路石');
+    await tester.pumpAndSettle();
+    expect(find.text('引路石数量提高'), findsWidgets);
+  });
 }
